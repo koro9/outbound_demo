@@ -2244,6 +2244,22 @@
             return parentQty * (child.comboQty || 1);
         }
 
+        function getBomChildFulfilledQty(product, child) {
+            return (child.scanQty || 0) + ((product.scanQty || 0) * (child.comboQty || 1));
+        }
+
+        function getDisplayedChildScanQty(product, child) {
+            return getBomChildFulfilledQty(product, child);
+        }
+
+        function isBomProductCompleted(product) {
+            if (!product || !product.isBom || !product.children || product.children.length === 0) {
+                return false;
+            }
+
+            return product.children.every(child => getBomChildFulfilledQty(product, child) >= getBomChildTargetQty(product, child));
+        }
+
         // 加载订单
         function loadOrder(waybill) {
             currentOrderId = waybill;
@@ -2419,7 +2435,7 @@
                             <td style="padding-left: 30px; color: #666;">${child.name}</td>
                             <td style="color: #666;">${child.barcode}</td>
                             <td style="color: #666;"><strong>${childQuantity}</strong></td>
-                            <td><input type="number" class="quantity-input" min="0" value="${child.scanQty || 0}" onchange="updateChildScanQty(${index}, ${childIndex}, this.value)"></td>
+                            <td><input type="number" class="quantity-input" min="0" value="${getDisplayedChildScanQty(product, child)}" onchange="updateChildScanQty(${index}, ${childIndex}, this.value)"></td>
                         `;
                         childRow.style.height = '40px';
                         childRow.style.padding = '4px 8px';
@@ -2460,7 +2476,9 @@
             const qty = parseInt(value);
             if (isNaN(qty) || qty < 0) return;
             
-            product.children[childIndex].scanQty = qty;
+            const child = product.children[childIndex];
+            const parentContribution = (product.scanQty || 0) * (child.comboQty || 1);
+            child.scanQty = Math.max(0, qty - parentContribution);
             
             updateOrderProgress();
             renderProductTable();
@@ -2478,16 +2496,11 @@
             
             currentOrder.products.forEach(product => {
                 if (product.isBom && product.children) {
-                    // 组合商品：母件扫满 或 所有子件扫满 算完成
-                    const parentQty = product.bomComboQty || 1;
-                    const parentDone = (product.scanQty || 0) >= parentQty;
-                    const allChildrenDone = product.children.every(child => {
-                        const childQuantity = getBomChildTargetQty(product, child);
-                        return (child.scanQty || 0) >= childQuantity;
-                    });
+                    // 组合商品：母件扫码与子件扫码混合累计，满足所有子件目标数即完成
+                    const allChildrenDone = isBomProductCompleted(product);
                     // 母件算1项
                     totalItems++;
-                    if (parentDone || allChildrenDone) {
+                    if (allChildrenDone) {
                         completedItems++;
                     }
                 } else {
@@ -2510,14 +2523,8 @@
             
             currentOrder.products.forEach(product => {
                 if (product.isBom && product.children) {
-                    // 组合商品：母件扫满 或 所有子件扫满
-                    const parentQty = product.bomComboQty || 1;
-                    const parentDone = (product.scanQty || 0) >= parentQty;
-                    const allChildrenDone = product.children.every(child => {
-                        const childQuantity = getBomChildTargetQty(product, child);
-                        return (child.scanQty || 0) >= childQuantity;
-                    });
-                    if (!parentDone && !allChildrenDone) {
+                    // 组合商品：母件扫码与子件扫码混合累计，满足所有子件目标数即完成
+                    if (!isBomProductCompleted(product)) {
                         allCompleted = false;
                     }
                 } else {
@@ -2569,7 +2576,7 @@
                     const parentBarcode = product.bomBarcode || product.barcode;
                     if (parentBarcode === barcode) {
                         const parentQty = product.bomComboQty || 1;
-                        if ((product.scanQty || 0) >= parentQty) {
+                        if ((product.scanQty || 0) >= parentQty || isBomProductCompleted(product)) {
                             showAlert(translations[currentLang].alerts.productSufficient.replace('{productId}', product.bomProductId || product.productId), 'info');
                         } else {
                             product.scanQty = (product.scanQty || 0) + 1;
@@ -2584,7 +2591,8 @@
                         const child = product.children[j];
                         if (child.barcode === barcode) {
                             const childQuantity = getBomChildTargetQty(product, child);
-                            if ((child.scanQty || 0) >= childQuantity) {
+                            const fulfilledQty = getBomChildFulfilledQty(product, child);
+                            if (fulfilledQty >= childQuantity) {
                                 showAlert(translations[currentLang].alerts.productSufficient.replace('{productId}', child.skuId), 'info');
                             } else {
                                 child.scanQty = (child.scanQty || 0) + 1;
