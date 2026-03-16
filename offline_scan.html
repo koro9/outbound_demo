@@ -286,6 +286,15 @@
             background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
         }
 
+        .btn-reset {
+            background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
+            color: white;
+        }
+
+        .btn-reset:hover {
+            background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+        }
+
         .btn:disabled {
             background: linear-gradient(135deg, #cbd5e0 0%, #a0aec0 100%);
             cursor: not-allowed;
@@ -668,6 +677,7 @@
                     <label for="barcodeInput">📷 Barcode</label>
                     <input type="text" id="barcodeInput" placeholder="Scan Barcode" autocomplete="off" disabled>
                 </div>
+                <button class="btn btn-reset" id="resetOrderBtn" disabled data-i18n="scan.resetOrder">🔄 Reset Order</button>
             </div>
             
             <div class="order-info" id="orderInfo">
@@ -779,7 +789,8 @@
                     scanWaybill: 'Scan Waybill',
                     barcode: '📷 Barcode',
                     scanBarcode: 'Scan Barcode',
-                    errorOrder: '⚠️ Error Order'
+                    errorOrder: '⚠️ Error Order',
+                    resetOrder: '🔄 Reset Order'
                 },
                 order: {
                     title: 'Order',
@@ -832,7 +843,8 @@
                     orderFileUploaded: 'Order file uploaded successfully',
                     skuFileUploaded: 'SKU file uploaded successfully',
                     orderDoesNotExist: 'Order does not exist: {waybill}',
-                    scanWaybillFirst: 'Please scan waybill first'
+                    scanWaybillFirst: 'Please scan waybill first',
+                    orderReset: 'Order {waybill} has been reset'
                 },
                 confirm: {
                     markError: 'Are you sure you want to mark the current order as error?',
@@ -864,7 +876,8 @@
                     scanWaybill: '掃描運單號',
                     barcode: '📷 商品條碼',
                     scanBarcode: '掃描商品條碼',
-                    errorOrder: '⚠️ 異常訂單'
+                    errorOrder: '⚠️ 異常訂單',
+                    resetOrder: '🔄 重置訂單'
                 },
                 order: {
                     title: '訂單信息',
@@ -917,7 +930,8 @@
                     orderFileUploaded: '訂單文件上傳成功',
                     skuFileUploaded: 'SKU文件上傳成功',
                     orderDoesNotExist: '訂單不存在: {waybill}',
-                    scanWaybillFirst: '請先掃描運單號'
+                    scanWaybillFirst: '請先掃描運單號',
+                    orderReset: '訂單 {waybill} 已重置'
                 },
                 confirm: {
                     markError: '確定要標記當前訂單為錯誤訂單嗎？',
@@ -1071,6 +1085,7 @@
         const skuStatus = document.getElementById('skuStatus');
         const orderInput = document.getElementById('orderInput');
         const barcodeInput = document.getElementById('barcodeInput');
+        const resetOrderBtn = document.getElementById('resetOrderBtn');
         const productTableBody = document.getElementById('productTableBody');
         const infoAlert = document.getElementById('infoAlert');
         const clearDataBtn = document.getElementById('clearDataBtn');
@@ -1507,6 +1522,7 @@
             orderInput.disabled = true;
             barcodeInput.disabled = false;
             barcodeInput.focus();
+            resetOrderBtn.disabled = false;
             
         }
 
@@ -1684,11 +1700,24 @@
             orderInput.disabled = false;
             barcodeInput.value = '';
             barcodeInput.disabled = true;
+            resetOrderBtn.disabled = true;
             
             productTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;"><span data-i18n="order.scanFirst"></span></td></tr>';
             
             orderInput.focus();
         }
+
+        resetOrderBtn.addEventListener('click', function() {
+            if (!currentOrder) {
+                return;
+            }
+
+            const waybill = currentOrder.waybill;
+            resetPage();
+            updateResultsTables();
+            updateStats();
+            showAlert(translations[currentLang].alerts.orderReset.replace('{waybill}', waybill), 'info');
+        });
 
         // 结果标签切换
         const resultTabs = document.querySelectorAll('.results-tab');
