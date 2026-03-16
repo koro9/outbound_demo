@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Label Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        .language-switcher {
+            position: relative;
+            margin: 0 auto 20px;
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            z-index: 1000;
+            max-width: 200px;
+        }
+
+        .lang-btn {
+            padding: 6px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            background-color: white;
+            color: #4a5568;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .lang-btn:hover {
+            background-color: #f7fafc;
+            border-color: #667eea;
+        }
+
+        .lang-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2d3748;
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .upload-section {
+            margin-bottom: 30px;
+            padding: 25px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 12px;
+            border: 2px solid #e2e8f0;
+        }
+
+        .upload-group {
+            position: relative;
+        }
+
+        .upload-group label {
+            display: block;
+            margin-bottom: 12px;
+            font-weight: 600;
+            color: #4a5568;
+            font-size: 16px;
+        }
+
+        .custom-file-upload {
+            position: relative;
+            width: 100%;
+        }
+
+        .custom-file-upload input[type="file"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        .custom-file-upload .file-label {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            background-color: white;
+            color: #4a5568;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            z-index: 1;
+        }
+
+        .custom-file-upload:hover .file-label {
+            border-color: #667eea;
+            background-color: #f7fafc;
+        }
+
+        .upload-status {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #718096;
+            padding: 8px 12px;
+            border-radius: 6px;
+            background-color: white;
+        }
+
+        .upload-status.success {
+            color: #2f855a;
+            background-color: #f0fff4;
+            border: 1px solid #c6f6d5;
+        }
+
+        .upload-status.error {
+            color: #c53030;
+            background-color: #fff5f5;
+            border: 1px solid #fed7d7;
+        }
+
+        .scan-section {
+            margin-bottom: 30px;
+            display: flex;
+            gap: 20px;
+            align-items: flex-end;
+        }
+
+        .input-group {
+            flex: 1;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #4a5568;
+            font-size: 16px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 14px 18px;
+            font-size: 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            transition: all 0.3s;
+            background-color: white;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .qty-group {
+            width: 150px;
+        }
+
+        .qty-group input {
+            width: 100%;
+            padding: 14px 18px;
+            font-size: 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .btn {
+            padding: 10px 28px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #5a67d8 0%, #4c51bf 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #fc8181 0%, #f56565 100%);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+        }
+
+        .btn:disabled {
+            background: linear-gradient(135deg, #a0aec0 0%, #718096 100%);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .label-preview-section {
+            margin-bottom: 30px;
+            padding: 25px;
+            background: linear-gradient(135deg, #ebf4ff 0%, #c3dafe 100%);
+            border-radius: 12px;
+            border: 2px solid #bee3f8;
+        }
+
+        .label-preview-section h2 {
+            margin-bottom: 20px;
+            color: #2c5282;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .label-container {
+            position: relative;
+            width: 210mm;
+            height: 150mm;
+            border: 1px solid #e2e8f0;
+            background-color: white;
+            margin: 0 auto 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .label-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.2;
+        }
+
+        .label-content h3 {
+            font-size: 12px;
+            font-weight: bold;
+            margin: 0;
+            padding: 0;
+        }
+
+        .label-content p {
+            margin: 0;
+            padding: 0;
+        }
+
+        .label-content .nutrition-info {
+            margin: 0;
+            padding: 0;
+        }
+
+        .label-content .nutrition-info table {
+            width: 100%;
+            font-size: 12px;
+            border-collapse: collapse;
+        }
+
+        .label-content .nutrition-info td {
+            padding: 0;
+            margin: 0;
+        }
+
+        .label-content .nutrition-info td:first-child {
+            width: 60%;
+        }
+
+        .label-content .nutrition-info td:last-child {
+            text-align: right;
+        }
+
+        .print-section {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .alert {
+            padding: 16px 20px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            display: none;
+            font-weight: 500;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            height: 0;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .alert.show {
+            display: block;
+            height: auto;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .alert-success {
+            background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%);
+            border: 2px solid #9ae6b4;
+            color: #22543d;
+        }
+
+        .alert-error {
+            background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+            border: 2px solid #feb2b2;
+            color: #742a2a;
+        }
+
+        .alert-warning {
+            background: linear-gradient(135deg, #fffff0 0%, #fefcbf 100%);
+            border: 2px solid #f6e05e;
+            color: #744210;
+        }
+
+        @media (max-width: 768px) {
+            .scan-section {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .qty-group {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 10px;">
+            <h1>📋 Label Generator</h1>
+        </div>
+
+        <div class="language-switcher">
+            <button class="lang-btn active" data-lang="en">English</button>
+            <button class="lang-btn" data-lang="yue">中文</button>
+        </div>
+
+        <!-- 右上角弹框提示 -->
+        <div style="position: fixed; top: 20px; right: 20px; z-index: 1000; max-width: 350px;" id="toastContainer"></div>
+
+        <!-- 数据输入块和预览区域 -->
+        <div style="display: flex; gap: 20px; align-items: flex-start;">
+            <!-- 上传和扫描区域 -->
+            <div style="flex: 1; max-width: 300px; padding: 20px; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); border-radius: 12px; border: 2px solid #e2e8f0;">
+                <input type="file" id="labelExcel" accept=".xlsx,.xls" style="display: none;">
+                <button class="btn btn-primary" id="uploadBtn" style="width: 100%; margin-bottom: 15px;">未上傳label excel</button>
+                <div class="input-group">
+                    <label for="barcodeInput">🔍 Scan Barcode</label>
+                    <input type="text" id="barcodeInput" placeholder="Scan product barcode" autocomplete="off">
+                </div>
+            </div>
+
+            <!-- 标签预览区域 -->
+            <div class="label-preview-section" style="flex: 3;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h2>Label Preview</h2>
+                    <button class="btn btn-primary" id="printBtn" disabled>🖨️ Print Label</button>
+                </div>
+                <div class="label-container" id="labelContainer">
+                    <div class="label-content" id="labelContent">
+                        <p style="text-align: center; margin-top: 40mm;">Scan barcode to preview label</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 語言映射
+        const translations = {
+            en: {
+                pageTitle: 'Label Generator',
+                header: '📋 Label Generator',
+                upload: {
+                    button: 'Upload Label Excel',
+                    reupload: 'Re-upload Label Excel',
+                    noData: 'No label Excel uploaded',
+                    withData: 'Re-upload Label Excel'
+                },
+                scan: {
+                    barcode: '🔍 Scan Barcode',
+                    placeholder: 'Scan product barcode'
+                },
+                preview: {
+                    title: 'Label Preview',
+                    print: '🖨️ Print Label',
+                    scanToPreview: 'Scan barcode to preview label'
+                },
+                alerts: {
+                    excelUploaded: 'Excel file uploaded successfully, {count} labels loaded',
+                    excelFailed: 'Excel file upload failed: {error}',
+                    labelNotFound: 'Label not found for barcode: {barcode}',
+                    dataLoaded: '{count} labels loaded from cache',
+                    storageWarning: 'Data is ready to use, but file is too large to cache permanently. You may need to re-upload after refreshing the page.'
+                }
+            },
+            yue: {
+                pageTitle: '標籤生成器',
+                header: '📋 標籤生成器',
+                upload: {
+                    button: '上傳標籤Excel',
+                    reupload: '重新上傳標籤Excel',
+                    noData: '未上傳label excel',
+                    withData: '重新上傳label excel'
+                },
+                scan: {
+                    barcode: '🔍 掃描條碼',
+                    placeholder: '掃描商品條碼'
+                },
+                preview: {
+                    title: '標籤預覽',
+                    print: '🖨️ 列印標籤',
+                    scanToPreview: '掃描條碼預覽標籤'
+                },
+                alerts: {
+                    excelUploaded: 'Excel文件上傳成功，已加載{count}個標籤',
+                    excelFailed: 'Excel文件上傳失敗：{error}',
+                    labelNotFound: '未找到條碼對應的標籤：{barcode}',
+                    dataLoaded: '已從緩存加載{count}個標籤',
+                    storageWarning: '數據已成功加載，但文件極大無法寫入緩存。若刷新頁面需重新上傳。'
+                }
+            }
+        };
+
+        let currentLang = 'en';
+        let labelData = {};
+        let currentBarcode = '';
+        let currentLabel = null;
+
+        const labelExcelInput = document.getElementById('labelExcel');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const barcodeInput = document.getElementById('barcodeInput');
+        const labelContainer = document.getElementById('labelContainer');
+        const labelContent = document.getElementById('labelContent');
+        const printBtn = document.getElementById('printBtn');
+        const toastContainer = document.getElementById('toastContainer');
+
+        // ==================From Ben========================
+        // IndexedDB 緩存系統 (替代原本容量極小的 localStorage)
+        // ==========================================
+        const DB_NAME = 'LabelGeneratorDB';
+        const STORE_NAME = 'LabelStore';
+
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                if (!window.indexedDB) {
+                    reject(new Error("IndexedDB not supported"));
+                    return;
+                }
+                const request = indexedDB.open(DB_NAME, 1);
+                request.onerror = (e) => reject(e.target.error);
+                request.onsuccess = (e) => resolve(e.target.result);
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME);
+                    }
+                };
+            });
+        }
+
+        async function saveToStorage(data) {
+            try {
+                const db = await initDB();
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                store.put(data, 'labelData');
+                
+                return new Promise((resolve, reject) => {
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = () => reject(tx.error);
+                });
+            } catch (e) {
+                console.warn("IndexedDB failed, trying localStorage fallback...", e);
+                try {
+                    localStorage.setItem('labelData', JSON.stringify(data));
+                    return Promise.resolve();
+                } catch (lsError) {
+                    return Promise.reject(lsError); // Both storage options failed
+                }
+            }
+        }
+
+        async function loadFromStorage() {
+            try {
+                const db = await initDB();
+                const tx = db.transaction(STORE_NAME, 'readonly');
+                const store = tx.objectStore(STORE_NAME);
+                const request = store.get('labelData');
+                
+                return new Promise((resolve, reject) => {
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            } catch (e) {
+                console.warn("IndexedDB load failed, trying localStorage fallback...", e);
+                const data = localStorage.getItem('labelData');
+                return data ? JSON.parse(data) : null;
+            }
+        }
+        // ==========================================
+
+        // 頁面初始化
+        async function initPage() {
+            try {
+                const cachedData = await loadFromStorage();
+                if (cachedData && Object.keys(cachedData).length > 0) {
+                    labelData = cachedData;
+                    const labelCount = Object.keys(labelData).length;
+                    updateUploadButtonText(true);
+                    showToast(translations[currentLang].alerts.dataLoaded.replace('{count}', labelCount), 'success');
+                } else {
+                    updateUploadButtonText(false);
+                }
+            } catch (error) {
+                console.error('Failed to load cached data:', error);
+                updateUploadButtonText(false);
+            }
+        }
+
+        function updateUploadButtonText(hasData) {
+            uploadBtn.textContent = hasData ? translations[currentLang].upload.withData : translations[currentLang].upload.noData;
+        }
+
+        function changeLanguage(lang) {
+            currentLang = lang;
+            
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.lang === lang) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            document.title = translations[lang].pageTitle;
+            document.querySelector('h1').textContent = translations[lang].header;
+            document.querySelector('label[for="barcodeInput"]').textContent = translations[lang].scan.barcode;
+            barcodeInput.placeholder = translations[lang].scan.placeholder;
+            document.querySelector('.label-preview-section h2').textContent = translations[lang].preview.title;
+            printBtn.textContent = translations[lang].preview.print;
+            
+            if (!currentBarcode) {
+                labelContent.innerHTML = `<p style="text-align: center; margin-top: 40mm;">${translations[lang].preview.scanToPreview}</p>`;
+            }
+            updateUploadButtonText(Object.keys(labelData).length > 0);
+        }
+
+        window.addEventListener('load', initPage);
+
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                changeLanguage(this.dataset.lang);
+            });
+        });
+
+        uploadBtn.addEventListener('click', function() {
+            labelExcelInput.click();
+        });
+
+        // 提示氣泡
+        function showToast(message, type) {
+            const toast = document.createElement('div');
+            toast.style.padding = '12px 16px';
+            toast.style.borderRadius = '8px';
+            toast.style.marginBottom = '10px';
+            toast.style.fontWeight = '500';
+            toast.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+            toast.style.animation = 'slideIn 0.3s ease-out';
+            toast.style.lineHeight = '1.4';
+            toast.textContent = message;
+            
+            if (type === 'success') {
+                toast.style.background = 'linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%)';
+                toast.style.border = '2px solid #9ae6b4';
+                toast.style.color = '#22543d';
+            } else if (type === 'error') {
+                toast.style.background = 'linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%)';
+                toast.style.border = '2px solid #feb2b2';
+                toast.style.color = '#742a2a';
+            } else if (type === 'warning') {
+                toast.style.background = 'linear-gradient(135deg, #fffff0 0%, #fefcbf 100%)';
+                toast.style.border = '2px solid #f6e05e';
+                toast.style.color = '#744210';
+            }
+            
+            toastContainer.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.3s ease-in forwards';
+                setTimeout(() => {
+                    if(toastContainer.contains(toast)) toastContainer.removeChild(toast);
+                }, 300);
+            }, type === 'warning' ? 6000 : 3000); // 警告信息停留時間更長
+        }
+
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { opacity: 0; transform: translateX(100%); }
+                to { opacity: 1; transform: translateX(0); }
+            }
+            @keyframes slideOut {
+                from { opacity: 1; transform: translateX(0); }
+                to { opacity: 0; transform: translateX(100%); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        function generateExcelColumns() {
+            const columns = [];
+            for (let i = 0; i < 26; i++) columns.push(String.fromCharCode(65 + i));
+            for (let i = 0; i < 26; i++) {
+                for (let j = 0; j < 26; j++) {
+                    columns.push(`${String.fromCharCode(65 + i)}${String.fromCharCode(65 + j)}`);
+                }
+            }
+            return columns;
+        }
+
+        const COLUMN_MAPPING = {
+            "health_food": ["A", "B", "I", "AU", "X", "AS", "T", "AV", "AH", "AJ", "AK", "AL", "AM", "AN", "AO", "AP", "AQ", "G"],
+            "food_label": ["A", "B", "AG", "AJ", "AK", "AL", "AM", "AN", "AO", "AP", "AQ", "AE", "X", "I", "T", "G"],
+            "special_label": ["A", "B", "AW", "AS", "AU", "I", "AY", "G"],
+            "ordinary_label": ["AS", "G"]
+        };
+
+        // 僅處理並放入內存，不直接觸碰存儲
+        function processExcelData(data) {
+            if (data.length < 2) return;
+            const excelColumns = generateExcelColumns();
+            
+            labelData = {}; // 清空舊數據
+            
+            for (let i = 1; i < data.length; i++) {
+                const row = data[i];
+                if (!row || row.length === 0) continue;
+                
+                const barcode = row[0] ? row[0].toString().trim() : '';
+                if (!barcode) continue;
+                
+                let labelType = '';
+                const gIndex = excelColumns.indexOf('G');
+                if (gIndex !== -1 && row[gIndex]) {
+                    labelType = row[gIndex].toString().trim().toLowerCase();
+                }
+                
+                const columnType = {
+                    "保健食品": "health_food",
+                    "food label": "food_label",
+                    "蟲蟲label": "special_label"
+                }[labelType] || "ordinary_label";
+                
+                const selectedColumns = COLUMN_MAPPING[columnType] || [];
+                const productData = {};
+                
+                row.forEach((value, index) => {
+                    const columnName = excelColumns[index];
+                    if (columnName && selectedColumns.includes(columnName)) {
+                        productData[columnName] = value;
+                    }
+                });
+                
+                if (!productData['G'] && gIndex !== -1 && row[gIndex]) {
+                    productData['G'] = row[gIndex];
+                }
+                
+                labelData[barcode] = productData;
+            }
+        }
+
+        labelExcelInput.addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                        
+                        // 1. 數據加載到內存 (即時可用)
+                        processExcelData(jsonData);
+                        const labelCount = Object.keys(labelData).length;
+                        updateUploadButtonText(true);
+
+                        // 2. 異步保存到 IndexedDB 緩存
+                        try {
+                            await saveToStorage(labelData);
+                            showToast(translations[currentLang].alerts.excelUploaded.replace('{count}', labelCount), 'success');
+                        } catch (storageError) {
+                            // 緩存失敗(文件過於極端大)，但因為數據已在內存中，依然算作成功，只是給個警告
+                            showToast(translations[currentLang].alerts.excelUploaded.replace('{count}', labelCount), 'success');
+                            setTimeout(() => {
+                                showToast(translations[currentLang].alerts.storageWarning, 'warning');
+                            }, 500);
+                        }
+                    } catch (error) {
+                        showToast(translations[currentLang].alerts.excelFailed.replace('{error}', error.message), 'error');
+                    }
+                    // 清空input，允許重新選擇同一個文件
+                    labelExcelInput.value = '';
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        });
+
+        barcodeInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                const barcode = this.value.trim();
+                if (barcode) {
+                    loadLabel(barcode);
+                    this.value = '';
+                    this.focus();
+                }
+            }
+        });
+
+        function loadLabel(barcode) {
+            currentBarcode = barcode;
+            if (!labelData[barcode]) {
+                showToast(translations[currentLang].alerts.labelNotFound.replace('{barcode}', barcode), 'error');
+                return;
+            }
+            currentLabel = labelData[barcode];
+            renderLabel(currentLabel);
+            printBtn.disabled = false;
+        }
+
+        // --- Render Functions (保持原樣) ---
+        function renderLabel(labelData) {
+            const labelType = getLabelType(labelData);
+            let contentHtml = '';
+            switch (labelType) {
+                case 'food_label': contentHtml = renderFoodLabel(labelData); break;
+                case 'health_food': contentHtml = renderHealthFoodLabel(labelData); break;
+                case 'special_label': contentHtml = renderSpecialLabel(labelData); break;
+                case 'ordinary_label': default: contentHtml = renderOrdinaryLabel(labelData); break;
+            }
+            document.getElementById('labelContent').innerHTML = contentHtml;
+        }
+
+        function getLabelType(labelData) {
+            const labelType = labelData['G'] ? labelData['G'].toString().trim().toLowerCase() : '';
+            const ingredients = labelData['I'] ? labelData['I'].toString().trim().toLowerCase() : '';
+            if (labelType.includes('保健食品') || ingredients.includes('保健食品')) return 'health_food';
+            else if (labelType.includes('food label')) return 'food_label';
+            else if (labelType.includes('蟲蟲label') || labelType.includes('special label')) return 'special_label';
+            else return 'ordinary_label';
+        }
+
+        function calculateFoodLabelRightFontSize(text, containerWidth, containerHeight, maxFontSize = 48, minFontSize = 12) {
+            const tempElement = document.createElement('div');
+            tempElement.style.position = 'absolute';
+            tempElement.style.visibility = 'hidden';
+            tempElement.style.width = (containerWidth - 10) + 'px';
+            tempElement.style.boxSizing = 'border-box';
+            tempElement.textContent = text;
+            document.body.appendChild(tempElement);
+            let fontSize = maxFontSize;
+            let height = 0;
+            do {
+                tempElement.style.fontSize = fontSize + 'px';
+                height = tempElement.offsetHeight;
+                fontSize -= 1;
+            } while (height > (containerHeight - 10) && fontSize >= minFontSize);
+            document.body.removeChild(tempElement);
+            return Math.max(minFontSize, fontSize + 1);
+        }
+
+        function renderFoodLabel(data) {
+            let html = '';
+            html += `<div style="position: absolute; top: 30mm; left: 0; width: 210mm; height: 2px; background-color: black;"></div>`;
+            html += `<div style="position: absolute; top: 120mm; left: 0; width: 210mm; height: 2px; background-color: black;"></div>`;
+            html += `<div style="position: absolute; top: 30mm; left: 73.5mm; width: 2px; height: 90mm; background-color: black;"></div>`;
+            
+            html += `<div style="position: absolute; top: 10mm; left: 6mm; width: 200mm;">`;
+            if (data['A']) {
+                let barcodeFontSize = data['A'].length > 20 ? 18 : 20;
+                html += `<div style="font-size: ${barcodeFontSize}px; margin-bottom: 2mm;">${data['A']}</div>`;
+            }
+            if (data['B']) {
+                let productNameFontSize = 20;
+                if (data['B'].length > 50) productNameFontSize = 18;
+                else if (data['B'].length > 80) productNameFontSize = 16;
+                else if (data['B'].length > 120) productNameFontSize = 14;
+                html += `<div style="font-size: ${productNameFontSize}px;">${data['B']}</div>`;
+            }
+            html += `</div>`;
+            
+            html += `<div style="position: absolute; top: 35mm; left: 6mm; font-size: 14px; font-weight: bold;">Nutrition Information</div>`;
+            html += `<div style="position: absolute; top: 45mm; left: 6mm; width: 60mm; font-size: 12px;">`;
+            
+            const renderRow = (label, val, padding = false) => {
+                if(!val && !label.includes('Serving')) return '';
+                return `<div style="display: flex; justify-content: space-between; margin-bottom: 3mm; ${padding ? 'padding-left: 5mm;' : ''}">
+                    <span>${label}</span><span>${val||''}</span></div>`;
+            };
+            
+            html += renderRow('Serving Size:', data['AG']);
+            html += renderRow('Energy:', data['AJ']);
+            html += renderRow('Protein:', data['AK']);
+            html += renderRow('Total fat:', data['AL']);
+            html += renderRow('- Saturated fat:', data['AM'], true);
+            html += renderRow('- Trans fat:', data['AN'], true);
+            html += renderRow('Carbohydrates:', data['AO']);
+            html += renderRow('- Sugars:', data['AP'], true);
+            html += renderRow('Sodium:', data['AQ']);
+            html += renderRow('Net Content:', data['AE']);
+            html += renderRow('Country Of Origin:', data['X']);
+            html += `</div>`;
+            
+            if (data['I']) {
+                const containerWidth = 120 * 3.7795275591;
+                const containerHeight = 80 * 3.7795275591;
+                const fontSize = calculateFoodLabelRightFontSize(data['I'], containerWidth, containerHeight);
+                html += `<div style="position: absolute; top: 35mm; left: 79.5mm; width: 120mm; height: 80mm; font-size: ${fontSize}px;">${data['I']}</div>`;
+            }
+            
+            html += `<div style="position: absolute; top: 125mm; left: 6mm; width: 120mm; height: 20mm; font-size: 18px;">${data['T'] || ''}</div>`;
+            html += `<div style="position: absolute; top: 125mm; right: 6mm; text-align: right; font-size: 16px;">
+                        <div>Best before(Date Format):</div>
+                        <div>Show on package(見包裝)</div>
+                        <div>此日期前最佳(Format CHI)</div>
+                     </div>`;
+            return html;
+        }
+
+        function calculateHealthFoodLabelFontSize(text, containerWidth, containerHeight, maxFontSize = 48, minFontSize = 12) {
+            const tempElement = document.createElement('div');
+            tempElement.style.position = 'absolute';
+            tempElement.style.visibility = 'hidden';
+            tempElement.style.width = (containerWidth - 10) + 'px';
+            tempElement.style.boxSizing = 'border-box';
+            tempElement.textContent = text;
+            document.body.appendChild(tempElement);
+            let fontSize = maxFontSize;
+            let height = 0;
+            do {
+                tempElement.style.fontSize = fontSize + 'px';
+                height = tempElement.offsetHeight;
+                fontSize -= 1;
+            } while (height > (containerHeight - 10) && fontSize >= minFontSize);
+            document.body.removeChild(tempElement);
+            return Math.max(minFontSize, fontSize + 1);
+        }
+
+        function renderHealthFoodLabel(data) {
+            let html = '';
+            const leftWidth = 210 * 0.6;
+            const rightWidth = 210 * 0.4;
+            const rightTopHeight = 150 * 0.3;
+            const rightTopAvailableHeight = rightTopHeight - 20;
+            const rightBottomAvailableHeight = 150 - rightTopHeight - 10;
+            
+            html += `<div style="position: absolute; top: 0; left: ${leftWidth}mm; width: 2px; height: 150mm; background-color: black;"></div>`;
+            html += `<div style="position: absolute; top: ${rightTopHeight}mm; left: ${leftWidth}mm; width: ${rightWidth}mm; height: 2px; background-color: black;"></div>`;
+            
+            html += `<div style="position: absolute; top: 10mm; left: 6mm; width: ${leftWidth - 12}mm;">`;
+            const baseFontSize = 18;
+            const minFontSize = 12;
+            let barcodeFontSize = (data['A'] && data['A'].length > 20) ? Math.max(minFontSize, baseFontSize - 2) : baseFontSize;
+            let productNameFontSize = baseFontSize;
+            if (data['B']) {
+                if (data['B'].length > 120) productNameFontSize = Math.max(minFontSize, baseFontSize - 6);
+                else if (data['B'].length > 80) productNameFontSize = Math.max(minFontSize, baseFontSize - 4);
+                else if (data['B'].length > 50) productNameFontSize = Math.max(minFontSize, baseFontSize - 2);
+            }
+            
+            let ingredientFontSize = baseFontSize;
+            if (data['I']) {
+                const ingredientContainerWidth = (leftWidth - 12) * 3.7795275591;
+                const ingredientAvailableHeight = 40 * 3.7795275591;
+                const tempIngredientElement = document.createElement('div');
+                tempIngredientElement.style.position = 'absolute';
+                tempIngredientElement.style.visibility = 'hidden';
+                tempIngredientElement.style.width = ingredientContainerWidth + 'px';
+                tempIngredientElement.style.boxSizing = 'border-box';
+                tempIngredientElement.textContent = data['I'];
+                document.body.appendChild(tempIngredientElement);
+                do {
+                    tempIngredientElement.style.fontSize = ingredientFontSize + 'px';
+                    if (tempIngredientElement.offsetHeight <= ingredientAvailableHeight) break;
+                    ingredientFontSize -= 1;
+                } while (ingredientFontSize >= minFontSize);
+                document.body.removeChild(tempIngredientElement);
+            }
+            
+            const smallFontSize = Math.max(minFontSize, baseFontSize - 4);
+            
+            if (data['A']) html += `<div style="font-size: ${barcodeFontSize}px; font-weight: bold; margin-bottom: 1mm;">${data['A']}</div>`;
+            if (data['B']) html += `<div style="font-size: ${productNameFontSize}px; font-weight: bold; margin-bottom: 4mm;">${data['B']}</div>`;
+            if (data['I']) {
+                html += `<div style="font-size: ${ingredientFontSize}px; margin-bottom: 3mm;">
+                    <div style="font-weight: bold; margin-bottom: 1mm;">Ingredient:</div>
+                    <div style="word-wrap: break-word;">${data['I']}</div></div>`;
+            }
+            
+            let bottomContentHtml = '';
+            if (data['AU']) bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 1mm;">Net Content: ${data['AU']}</div>`;
+            if (data['X']) bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 1mm;">Country Of Origin: ${data['X']}</div>`;
+            if (data['AS']) bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 1mm; word-wrap: break-word;">${data['AS']}</div>`;
+            if (data['T']) bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 1mm; word-wrap: break-word;">${data['T']}</div>`;
+            bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 0.5mm;">Best before(End YY-MM):</div>
+                                  <div style="font-size: ${smallFontSize}px; margin-bottom: 0.5mm;">Show on package(見包裝)</div>`;
+            
+            const tempBottomElement = document.createElement('div');
+            tempBottomElement.style.position = 'absolute';
+            tempBottomElement.style.visibility = 'hidden';
+            tempBottomElement.style.width = (leftWidth - 12) * 3.7795275591 + 'px';
+            tempBottomElement.style.boxSizing = 'border-box';
+            tempBottomElement.innerHTML = bottomContentHtml;
+            document.body.appendChild(tempBottomElement);
+            const bottomContentHeight = tempBottomElement.offsetHeight;
+            document.body.removeChild(tempBottomElement);
+            
+            html += `<div style="height: ${bottomContentHeight}px;">${bottomContentHtml}</div>`;
+            html += `<div style="font-size: ${smallFontSize}px;">此日期前最佳(年月底)</div></div>`;
+            
+            html += `<div style="position: absolute; top: 10mm; left: ${leftWidth + 6}mm; width: ${rightWidth - 12}mm;">`;
+            const rightTopContent = `Nutrition Information\nServing Size:\n${data['AV'] || ''}\n${data['AH'] || ''}`;
+            const rightTopFontSize = calculateHealthFoodLabelFontSize(rightTopContent, (rightWidth - 12) * 3.7795275591, rightTopAvailableHeight * 3.7795275591, 18, 12);
+            const rightBottomContent = `Energy: ${data['AJ'] || ''}\nProtein: ${data['AK'] || ''}\nTotal Fat: ${data['AL'] || ''}\nSaturated: ${data['AM'] || ''}\nTrans Fat: ${data['AN'] || ''}\nCarbohydrate: ${data['AO'] || ''}\nSugars: ${data['AP'] || ''}\nSodium: ${data['AQ'] || ''}`;
+            const rightBottomFontSize = calculateHealthFoodLabelFontSize(rightBottomContent, (rightWidth - 12) * 3.7795275591, rightBottomAvailableHeight * 3.7795275591, 16, 12);
+            
+            html += `<div style="font-size: ${rightTopFontSize}px; font-weight: bold; margin-bottom: 6mm;">Nutrition Information</div>`;
+            if (data['AV']) {
+                html += `<div style="font-size: ${rightTopFontSize}px; margin-bottom: 6mm;">Serving Size:</div>
+                         <div style="font-size: ${rightTopFontSize}px; margin-bottom: 12mm;">${data['AV']}</div>`;
+            }
+            if (data['AH']) html += `<div style="font-size: ${rightTopFontSize}px; margin-bottom: 8mm;">${data['AH']}</div>`;
+            
+            const renderRightRow = (label, val) => val ? `<div style="font-size: ${rightBottomFontSize}px; margin-bottom: 4mm;">${label}: ${val}</div>` : '';
+            html += renderRightRow('Energy', data['AJ']);
+            html += renderRightRow('Protein', data['AK']);
+            html += renderRightRow('Total Fat', data['AL']);
+            html += renderRightRow('Saturated', data['AM']);
+            html += renderRightRow('Trans Fat', data['AN']);
+            html += renderRightRow('Carbohydrate', data['AO']);
+            html += renderRightRow('Sugars', data['AP']);
+            if(data['AQ']) html += `<div style="font-size: ${rightBottomFontSize}px;">Sodium: ${data['AQ']}</div>`;
+            
+            html += `</div>`;
+            return html;
+        }
+
+        function renderSpecialLabel(data) {
+            let html = `<table style="width: 100%; border-collapse: collapse; margin: 2mm 6mm;">`;
+            const getFontSize = (val) => {
+                if (val.length > 350) return 10;
+                if (val.length > 250) return 12;
+                if (val.length > 150) return 14;
+                if (val.length > 80) return 16;
+                return 18;
+            };
+            
+            ["A", "B"].forEach(field => {
+                if (data[field]) {
+                    html += `<tr><td style="width: 100%; font-size: ${getFontSize(data[field])}px; padding: 1mm 0; vertical-align: top; padding-right: 10mm;">${data[field]}</td></tr>`;
+                }
+            });
+            ["AW", "AS", "AU", "I", "AY"].forEach(field => {
+                if (data[field]) {
+                    html += `<tr><td style="width: 100%; font-size: ${getFontSize(data[field])}px; padding: 2mm 0; vertical-align: top; padding-right: 10mm;">${data[field]}</td></tr>`;
+                }
+            });
+            html += `</table>`;
+            return html;
+        }
+
+        function calculateFontSize(text, containerWidth, containerHeight, maxFontSize = 72, minFontSize = 8) {
+            const tempElement = document.createElement('div');
+            tempElement.style.position = 'absolute';
+            tempElement.style.visibility = 'hidden';
+            tempElement.style.width = containerWidth + 'px';
+            tempElement.style.paddingRight = '10mm';
+            tempElement.style.boxSizing = 'border-box';
+            tempElement.textContent = text;
+            document.body.appendChild(tempElement);
+            let fontSize = maxFontSize;
+            let height = 0;
+            do {
+                tempElement.style.fontSize = fontSize + 'px';
+                height = tempElement.offsetHeight;
+                fontSize -= 1;
+            } while (height > containerHeight && fontSize >= minFontSize);
+            document.body.removeChild(tempElement);
+            return Math.max(minFontSize, fontSize + 1);
+        }
+
+        function renderOrdinaryLabel(data) {
+            if (!data['AS']) return '';
+            const containerWidth = 210 - 12;
+            const containerHeight = 150 - 20;
+            const fontSize = calculateFontSize(data['AS'], containerWidth * 3.7795275591, containerHeight * 3.7795275591);
+            return `<table style="width: 100%; border-collapse: collapse; margin: 10mm 6mm;"><tr>
+                <td style="width: 100%; font-size: ${fontSize}px; padding: 3mm 0; vertical-align: top; padding-right: 10mm;">${data['AS']}</td>
+                </tr></table>`;
+        }
+
+        // Print functionality
+        document.getElementById('printBtn').addEventListener('click', function() {
+            if (!currentLabel) return;
+            const printWindow = window.open('', '_blank');
+            printWindow.document.open();
+            
+            let printContent = `<!DOCTYPE html><html><head><title>Print Label</title><style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                @page { size: 70mm 50mm; margin: 0; }
+                body { margin: 0; padding: 0; font-family: 'Microsoft YaHei', Arial, sans-serif; width: 70mm; height: 50mm; overflow: hidden; }
+                .label { width: 70mm; height: 50mm; border: 1px solid #000; background-color: white; position: relative; overflow: hidden; }
+                .label-content { position: absolute; top: 0; left: 0; right: 0; bottom: 0; font-family: 'Microsoft YaHei', Arial, sans-serif; font-size: 12px; line-height: 1.2; transform: scale(0.333); transform-origin: top left; width: 300%; height: 300%; }
+                @media print {
+                    body { padding: 0; }
+                    .label { box-shadow: none; border: 1px solid #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                }
+                </style></head><body>`;
+                
+            const labelType = getLabelType(currentLabel);
+            let labelHtml = '';
+            switch (labelType) {
+                case 'food_label': labelHtml = renderFoodLabel(currentLabel); break;
+                case 'health_food': labelHtml = renderHealthFoodLabel(currentLabel); break;
+                case 'special_label': labelHtml = renderSpecialLabel(currentLabel); break;
+                case 'ordinary_label': default: labelHtml = renderOrdinaryLabel(currentLabel); break;
+            }
+            printContent += `<div class="label"><div class="label-content">${labelHtml}</div></div></body></html>`;
+            
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+            printWindow.onload = function() {
+                printWindow.print();
+                printWindow.close();
+            };
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('labelContent').innerHTML = '<div style="text-align: center; position: absolute; top: 60mm; left: 0; right: 0; font-size: 16px;">Scan barcode to preview label</div>';
+            setTimeout(() => document.getElementById('barcodeInput').focus(), 100);
+        });
+    </script>
+</body>
+</html>
