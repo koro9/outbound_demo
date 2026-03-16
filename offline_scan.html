@@ -1376,10 +1376,12 @@
             for (const waybill in orderData) {
                 const order = orderData[waybill];
                 order.products.forEach(product => {
-                    if (product.productId && skuData[product.productId] && skuData[product.productId].length > 0) {
-                        product.barcode = skuData[product.productId][0].barcode;
-                    } else if (!product.barcode && product.productId) {
-                        product.barcode = product.productId;
+                    const skuItems = getSkuItemsForProduct(product);
+                    const primarySkuItem = getPrimarySkuItem(skuItems);
+                    if (skuItems.length > 0) {
+                        product.barcode = primarySkuItem && primarySkuItem.barcode ? primarySkuItem.barcode : '';
+                    } else if (!product.barcode) {
+                        product.barcode = '';
                     }
                 });
             }
@@ -1559,18 +1561,52 @@
         }
 
         function findMatchedBomItem(product, skuItems) {
-            const bomItems = skuItems.filter(item => item.isBom);
+            const bomItems = skuItems.filter(item => item.isBom && (item.childSku || item.childName || item.childBarcode));
             if (bomItems.length === 0) {
                 return null;
             }
 
-            return bomItems.find(item => item.childSku && product.skuId && item.childSku === product.skuId)
+            const matchedBomItem = bomItems.find(item => item.childSku && product.skuId && item.childSku === product.skuId)
                 || bomItems.find(item => item.childName && product.skuNameZh && item.childName === product.skuNameZh)
-                || bomItems.find(item => item.childSku && product.productId && item.childSku === product.productId)
-                || bomItems[0];
+                || bomItems.find(item => item.childSku && product.productId && item.childSku === product.productId);
+
+            if (matchedBomItem) {
+                return matchedBomItem;
+            }
+
+            const uniqueMotherKeys = new Set(
+                bomItems.map(item => `${item.childSku || ''}__${item.childBarcode || ''}__${item.childName || ''}`)
+            );
+            return uniqueMotherKeys.size === 1 ? bomItems[0] : null;
         }
 
-        function buildBomChildren(bomItem, bomMultiplier) {
+        function getSkuItemsForProduct(product) {
+            if (!product) {
+                return [];
+            }
+
+            const skuKeys = [product.productId, product.skuId].filter(Boolean);
+            for (const key of skuKeys) {
+                if (skuData[key] && Array.isArray(skuData[key]) && skuData[key].length > 0) {
+                    return skuData[key];
+                }
+            }
+
+            return [];
+        }
+
+        function getPrimarySkuItem(skuItems) {
+            if (!skuItems || skuItems.length === 0) {
+                return null;
+            }
+
+            return skuItems.find(item => !item.isBom && item.barcode)
+                || skuItems.find(item => !item.isBom)
+                || skuItems.find(item => item.barcode)
+                || skuItems[0];
+        }
+
+        function buildBomChildren(bomItem, bomMultiplier, fallbackBarcode = '') {
             if (!bomItem) {
                 return [];
             }
@@ -1579,7 +1615,7 @@
                 skuId: bomItem.baseSku || bomItem.skuId,
                 name: bomItem.name,
                 comboQty: bomMultiplier || 1,
-                barcode: bomItem.barcode,
+                barcode: bomItem.barcode || fallbackBarcode || '',
                 scanQty: 0
             }];
         }
@@ -1632,8 +1668,9 @@
             
             // 确保每个商品都有barcode，处理BOM组合商品
             currentOrder.products.forEach(product => {
-                if (product.productId && skuData[product.productId] && skuData[product.productId].length > 0) {
-                    const skuItems = skuData[product.productId];
+                const skuItems = getSkuItemsForProduct(product);
+                if (skuItems.length > 0) {
+                    const primarySkuItem = getPrimarySkuItem(skuItems);
                     const matchedBomItem = findMatchedBomItem(product, skuItems);
                     product.isBom = Boolean(matchedBomItem);
                     
@@ -1641,22 +1678,20 @@
                         // BOM母件行：取第一条BOM记录的childSku/childName/childBarcode作为母件显示
                         product.bomProductId = matchedBomItem.childSku || product.skuId || product.productId;
                         product.bomName = matchedBomItem.childName || product.skuNameZh;
-                        product.bomBarcode = matchedBomItem.childBarcode || matchedBomItem.barcode;
+                        product.bomBarcode = matchedBomItem.childBarcode || '';
                         product.bomComboQty = matchedBomItem.comboQty || 1;
                         product.bomMultiplier = extractBomMultiplier(product.bomName, 1);
                         product.barcode = product.bomBarcode;
                         
                         // 子件行：锁定当前母件对应的子件，只展示一行
-                        product.children = buildBomChildren(matchedBomItem, product.bomMultiplier);
+                        product.children = buildBomChildren(matchedBomItem, product.bomMultiplier, primarySkuItem ? primarySkuItem.barcode : '');
                     } else {
-                        product.barcode = skuItems[0].barcode;
+                        product.barcode = primarySkuItem && primarySkuItem.barcode ? primarySkuItem.barcode : '';
                         product.isBom = false;
                         product.children = [];
                     }
                 } else {
-                    if (!product.barcode && product.productId) {
-                        product.barcode = product.productId;
-                    }
+                    product.barcode = product.barcode || '';
                     product.isBom = false;
                     product.children = [];
                 }
@@ -1703,8 +1738,8 @@
                 return product.children.reduce((total, child) => total + getBomChildTargetQty(product, child), 0);
             }
 
-            if (product.productId && skuData[product.productId] && skuData[product.productId].length > 0) {
-                const skuItems = skuData[product.productId];
+            const skuItems = getSkuItemsForProduct(product);
+            if (skuItems.length > 0) {
                 const matchedBomItem = findMatchedBomItem(product, skuItems);
                 if (matchedBomItem) {
                     const bomName = matchedBomItem.childName || product.skuNameZh;
