@@ -2203,6 +2203,47 @@
             return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
         }
 
+        function extractBomMultiplier(name, fallback = 1) {
+            if (!name) return fallback;
+
+            const match = name.toString().match(/[x×]\s*(\d+)/i);
+            if (!match) return fallback;
+
+            const multiplier = parseInt(match[1], 10);
+            return Number.isNaN(multiplier) || multiplier <= 0 ? fallback : multiplier;
+        }
+
+        function findMatchedBomItem(product, skuItems) {
+            const bomItems = skuItems.filter(item => item.isBom);
+            if (bomItems.length === 0) {
+                return null;
+            }
+
+            return bomItems.find(item => item.childSku && product.skuId && item.childSku === product.skuId)
+                || bomItems.find(item => item.childName && product.skuNameZh && item.childName === product.skuNameZh)
+                || bomItems.find(item => item.childSku && product.productId && item.childSku === product.productId)
+                || bomItems[0];
+        }
+
+        function buildBomChildren(bomItem, bomMultiplier) {
+            if (!bomItem) {
+                return [];
+            }
+
+            return [{
+                skuId: bomItem.baseSku || bomItem.skuId,
+                name: bomItem.name,
+                comboQty: bomMultiplier || 1,
+                barcode: bomItem.barcode,
+                scanQty: 0
+            }];
+        }
+
+        function getBomChildTargetQty(product, child) {
+            const parentQty = product.bomComboQty || product.quantity || 0;
+            return parentQty * (child.comboQty || 1);
+        }
+
         // 加载订单
         function loadOrder(waybill) {
             currentOrderId = waybill;
@@ -2243,33 +2284,30 @@
             
             currentOrder.products.forEach(product => {
                 if (product.productId && skuData[product.productId] && skuData[product.productId].length > 0) {
-                    product.barcode = skuData[product.productId][0].barcode;
-                } else if (!product.barcode && product.productId) {
-                    product.barcode = product.productId;
-                }
-                
-                if (product.productId && skuData[product.productId] && skuData[product.productId].length > 0) {
                     const skuItems = skuData[product.productId];
-                    product.isBom = skuItems.some(item => item.isBom);
+                    const matchedBomItem = findMatchedBomItem(product, skuItems);
+                    product.isBom = Boolean(matchedBomItem);
                     
                     if (product.isBom) {
-                        product.children = [];
+                        // BOM母件行：取第一条BOM记录的childSku/childName/childBarcode作为母件显示
+                        product.bomProductId = matchedBomItem.childSku || product.skuId || product.productId;
+                        product.bomName = matchedBomItem.childName || product.skuNameZh;
+                        product.bomBarcode = matchedBomItem.childBarcode || matchedBomItem.barcode;
+                        product.bomComboQty = matchedBomItem.comboQty || 1;
+                        product.bomMultiplier = extractBomMultiplier(product.bomName, 1);
+                        product.barcode = product.bomBarcode;
                         
-                        skuItems.forEach(skuItem => {
-                            if (skuItem.childSku) {
-                                product.children.push({
-                                    skuId: skuItem.childSku,
-                                    name: skuItem.childName,
-                                    comboQty: skuItem.comboQty,
-                                    barcode: skuItem.childBarcode,
-                                    scanQty: 0
-                                });
-                            }
-                        });
+                        // 子件行：锁定当前母件对应的子件，只展示一行
+                        product.children = buildBomChildren(matchedBomItem, product.bomMultiplier);
                     } else {
+                        product.barcode = skuItems[0].barcode;
                         product.isBom = false;
                         product.children = [];
                     }
+                } else if (!product.barcode && product.productId) {
+                    product.barcode = product.productId;
+                    product.isBom = false;
+                    product.children = [];
                 } else {
                     product.isBom = false;
                     product.children = [];
@@ -2308,17 +2346,30 @@
         }
 
         // 计算商品数量（BOM母商品不计入，只计算子商品）
+        function getProductTargetCount(product) {
+            if (!product) return 0;
+
+            if (product.isBom && product.children && product.children.length > 0) {
+                return product.children.reduce((total, child) => total + getBomChildTargetQty(product, child), 0);
+            }
+
+            if (product.productId && skuData[product.productId] && skuData[product.productId].length > 0) {
+                const skuItems = skuData[product.productId];
+                const matchedBomItem = findMatchedBomItem(product, skuItems);
+                if (matchedBomItem) {
+                    const bomName = matchedBomItem.childName || product.skuNameZh;
+                    const bomComboQty = matchedBomItem.comboQty || 1;
+                    const bomMultiplier = extractBomMultiplier(bomName, 1);
+                    return bomComboQty * bomMultiplier;
+                }
+            }
+
+            return product.quantity || 0;
+        }
+
         function getProductCount(products) {
             if (!products) return 0;
-            let count = 0;
-            products.forEach(p => {
-                if (p.isBom && p.children && p.children.length > 0) {
-                    count += p.children.length;
-                } else {
-                    count++;
-                }
-            });
-            return count;
+            return products.reduce((total, product) => total + getProductTargetCount(product), 0);
         }
 
         // 渲染商品表格
@@ -2336,12 +2387,18 @@
                 parentRow.className = 'product-row';
                 parentRow.dataset.index = index;
                 
+                // BOM母件用bomProductId/bomName/bomBarcode显示
+                const displayId = product.isBom ? (product.bomProductId || product.productId) : product.productId;
+                const displayName = product.isBom ? (product.bomName || product.skuNameZh) : product.skuNameZh;
+                const displayBarcode = product.isBom ? (product.bomBarcode || product.barcode) : product.barcode;
+                const displayQty = product.isBom ? product.bomComboQty : product.quantity;
+                
                 parentRow.innerHTML = `
-                    <td><strong>${product.productId}</strong></td>
-                    <td>${product.skuNameZh}</td>
-                    <td>${product.barcode}</td>
-                    <td><strong>${product.quantity}</strong></td>
-                    <td>${product.isBom ? '' : '<input type="number" class="quantity-input" min="0" value="' + (product.scanQty || 0) + '" onchange="updateScanQty(' + index + ', this.value)">'}</td>
+                    <td><strong>${displayId}</strong></td>
+                    <td>${displayName}</td>
+                    <td>${displayBarcode}</td>
+                    <td><strong>${displayQty}</strong></td>
+                    <td><input type="number" class="quantity-input" min="0" value="${product.scanQty || 0}" onchange="updateScanQty(${index}, this.value)"></td>
                 `;
                 
                 productTableBody.appendChild(parentRow);
@@ -2355,7 +2412,7 @@
                         childRow.dataset.childIndex = childIndex;
                         childRow.style.borderLeft = '3px solid #667eea';
                         
-                        const childQuantity = product.quantity * child.comboQty;
+                        const childQuantity = getBomChildTargetQty(product, child);
                         
                         childRow.innerHTML = `
                             <td style="padding-left: 30px; color: #666;">${child.skuId}</td>
@@ -2421,14 +2478,18 @@
             
             currentOrder.products.forEach(product => {
                 if (product.isBom && product.children) {
-                    // 组合商品，只计算子商品
-                    product.children.forEach(child => {
-                        const childQuantity = product.quantity * child.comboQty;
-                        totalItems++;
-                        if ((child.scanQty || 0) >= childQuantity) {
-                            completedItems++;
-                        }
+                    // 组合商品：母件扫满 或 所有子件扫满 算完成
+                    const parentQty = product.bomComboQty || 1;
+                    const parentDone = (product.scanQty || 0) >= parentQty;
+                    const allChildrenDone = product.children.every(child => {
+                        const childQuantity = getBomChildTargetQty(product, child);
+                        return (child.scanQty || 0) >= childQuantity;
                     });
+                    // 母件算1项
+                    totalItems++;
+                    if (parentDone || allChildrenDone) {
+                        completedItems++;
+                    }
                 } else {
                     // 非组合商品
                     totalItems++;
@@ -2449,12 +2510,14 @@
             
             currentOrder.products.forEach(product => {
                 if (product.isBom && product.children) {
-                    // 组合商品，检查所有子商品
-                    const childCompleted = product.children.every(child => {
-                        const childQuantity = product.quantity * child.comboQty;
+                    // 组合商品：母件扫满 或 所有子件扫满
+                    const parentQty = product.bomComboQty || 1;
+                    const parentDone = (product.scanQty || 0) >= parentQty;
+                    const allChildrenDone = product.children.every(child => {
+                        const childQuantity = getBomChildTargetQty(product, child);
                         return (child.scanQty || 0) >= childQuantity;
                     });
-                    if (!childCompleted) {
+                    if (!parentDone && !allChildrenDone) {
                         allCompleted = false;
                     }
                 } else {
@@ -2501,12 +2564,26 @@
             for (let i = 0; i < currentOrder.products.length; i++) {
                 const product = currentOrder.products[i];
                 
-                // 检查子商品
                 if (product.isBom && product.children) {
+                    // 先检查是否匹配母件条码
+                    const parentBarcode = product.bomBarcode || product.barcode;
+                    if (parentBarcode === barcode) {
+                        const parentQty = product.bomComboQty || 1;
+                        if ((product.scanQty || 0) >= parentQty) {
+                            showAlert(translations[currentLang].alerts.productSufficient.replace('{productId}', product.bomProductId || product.productId), 'info');
+                        } else {
+                            product.scanQty = (product.scanQty || 0) + 1;
+                            matchedProduct = product;
+                            matchedIndex = i;
+                            matched = true;
+                        }
+                        break;
+                    }
+                    // 再检查子商品条码
                     for (let j = 0; j < product.children.length; j++) {
                         const child = product.children[j];
                         if (child.barcode === barcode) {
-                            const childQuantity = product.quantity * child.comboQty;
+                            const childQuantity = getBomChildTargetQty(product, child);
                             if ((child.scanQty || 0) >= childQuantity) {
                                 showAlert(translations[currentLang].alerts.productSufficient.replace('{productId}', child.skuId), 'info');
                             } else {
