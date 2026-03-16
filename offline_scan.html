@@ -295,6 +295,25 @@
             background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
         }
 
+        .btn-force {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+        }
+
+        .btn-force:hover {
+            background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-buttons .btn {
+            flex: 1;
+            justify-content: center;
+        }
+
         .btn:disabled {
             background: linear-gradient(135deg, #cbd5e0 0%, #a0aec0 100%);
             cursor: not-allowed;
@@ -677,7 +696,10 @@
                     <label for="barcodeInput">📷 Barcode</label>
                     <input type="text" id="barcodeInput" placeholder="Scan Barcode" autocomplete="off" disabled>
                 </div>
-                <button class="btn btn-reset" id="resetOrderBtn" disabled data-i18n="scan.resetOrder">🔄 Reset Order</button>
+                <div class="action-buttons">
+                    <button class="btn btn-reset" id="resetOrderBtn" disabled data-i18n="scan.resetOrder">🔄 Reset Order</button>
+                    <button class="btn btn-force" id="forceCompleteBtn" disabled data-i18n="scan.forceComplete">✅ Force Outbound</button>
+                </div>
             </div>
             
             <div class="order-info" id="orderInfo">
@@ -835,7 +857,7 @@
                     scanSuccess: 'Scan successful: {productId}',
                     productSufficient: 'Product {productId} already sufficient',
                     noMatchingProduct: 'No matching product found: {barcode}',
-                    scanComplete: 'Order {waybill} scan completed',
+                    scanComplete: 'Order {waybill} outbound completed',
                     orderMarkedError: 'Order {waybill} marked as error',
                     dataCleared: 'All data cleared',
                     filesReady: 'Files uploaded successfully, ready to scan',
@@ -844,7 +866,8 @@
                     skuFileUploaded: 'SKU file uploaded successfully',
                     orderDoesNotExist: 'Order does not exist: {waybill}',
                     scanWaybillFirst: 'Please scan waybill first',
-                    orderReset: 'Order {waybill} has been reset'
+                    orderReset: 'Order {waybill} has been reset',
+                    orderAlreadyCompleted: 'Order {waybill} is already outbound completed and cannot be scanned again'
                 },
                 confirm: {
                     markError: 'Are you sure you want to mark the current order as error?',
@@ -922,7 +945,7 @@
                     scanSuccess: '掃描成功: {productId}',
                     productSufficient: '商品 {productId} 已經足夠',
                     noMatchingProduct: '未找到匹配的商品: {barcode}',
-                    scanComplete: '訂單 {waybill} 掃描完成',
+                    scanComplete: '訂單 {waybill} 出庫完成',
                     orderMarkedError: '訂單 {waybill} 已標記為錯誤',
                     dataCleared: '所有數據已清除',
                     filesReady: '文件上傳完成，可以開始掃描',
@@ -931,7 +954,8 @@
                     skuFileUploaded: 'SKU文件上傳成功',
                     orderDoesNotExist: '訂單不存在: {waybill}',
                     scanWaybillFirst: '請先掃描運單號',
-                    orderReset: '訂單 {waybill} 已重置'
+                    orderReset: '訂單 {waybill} 已重置',
+                    orderAlreadyCompleted: '訂單 {waybill} 已完成出庫，不能再次掃描'
                 },
                 confirm: {
                     markError: '確定要標記當前訂單為錯誤訂單嗎？',
@@ -1484,6 +1508,19 @@
                 showAlert(translations[currentLang].alerts.orderDoesNotExist.replace('{waybill}', waybill), 'error');
                 return;
             }
+
+            const completedInResults = scanResults[waybill] && scanResults[waybill].status === 'completed';
+            const completedInOrderData = orderData[waybill].status === 'completed';
+            if (completedInResults || completedInOrderData) {
+                showAlert(translations[currentLang].alerts.orderAlreadyCompleted.replace('{waybill}', waybill), 'info');
+                orderInput.value = '';
+                orderInput.disabled = false;
+                barcodeInput.value = '';
+                barcodeInput.disabled = true;
+                resetOrderBtn.disabled = true;
+                orderInput.focus();
+                return;
+            }
             
             currentOrder = JSON.parse(JSON.stringify(orderData[waybill]));
             
@@ -1786,9 +1823,9 @@
             for (const waybill in orderData) {
                 allOrders[waybill] = {
                     ...orderData[waybill],
-                    status: 'pending',
-                    scanProgress: 0,
-                    scanTime: null
+                    status: orderData[waybill].status || 'pending',
+                    scanProgress: orderData[waybill].scanProgress || 0,
+                    scanTime: orderData[waybill].scanTime || null
                 };
             }
             
@@ -1806,7 +1843,7 @@
             }
             
             // 过滤出待处理订单
-            const pendingOrders = Object.values(allOrders).filter(order => order.status !== 'completed');
+            const pendingOrders = Object.values(allOrders).filter(order => order.status === 'pending');
             
             if (pendingOrders.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;"><span data-i18n="results.noPending"></span></td></tr>`;
@@ -1832,12 +1869,32 @@
 
         // 更新统计数据
         function updateStats() {
-            const correctCount = Object.values(scanResults).filter(order => order.status === 'completed').length;
+            const allOrders = {};
             
             // 计算待处理订单数量（总数减去已完成订单）
-            const pendingCount = Object.keys(orderData).length - correctCount;
+            for (const waybill in orderData) {
+                allOrders[waybill] = {
+                    ...orderData[waybill],
+                    status: orderData[waybill].status || 'pending'
+                };
+            }
+
+            for (const waybill in scanResults) {
+                allOrders[waybill] = {
+                    ...allOrders[waybill],
+                    ...scanResults[waybill]
+                };
+            }
+
+            if (currentOrder && currentOrder.waybill) {
+                allOrders[currentOrder.waybill] = currentOrder;
+            }
+
+            const orders = Object.values(allOrders);
+            const correctCount = orders.filter(order => order.status === 'completed').length;
+            const pendingCount = orders.filter(order => order.status === 'pending').length;
             
-            const totalCount = Object.keys(orderData).length;
+            const totalCount = orders.length;
 
             correctCountEl.textContent = correctCount;
             errorCountEl.textContent = 0;
