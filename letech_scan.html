@@ -303,6 +303,24 @@
             background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
         }
 
+        .btn-reset {
+            background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
+            color: white;
+        }
+
+        .btn-reset:hover {
+            background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+        }
+
+        .btn-force {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+        }
+
+        .btn-force:hover {
+            background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+        }
+
         .btn:disabled {
             background: linear-gradient(135deg, #a0aec0 0%, #718096 100%);
             cursor: not-allowed;
@@ -631,9 +649,16 @@
         .scan-buttons {
             display: flex;
             gap: 10px;
+            align-items: center;
         }
 
-        .scan-buttons button {
+        .scan-buttons .action-buttons {
+            display: flex;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .scan-buttons .action-buttons .btn {
             flex: 1;
             justify-content: center;
         }
@@ -804,9 +829,16 @@
                 gap: 10px;
                 align-items: center;
                 width: 100%;
+                flex-wrap: wrap;
             }
 
-            .scan-buttons button {
+            .scan-buttons .action-buttons {
+                display: flex;
+                gap: 10px;
+                width: 100%;
+            }
+
+            .scan-buttons .action-buttons .btn {
                 flex: 1;
                 font-size: 14px;
                 padding: 10px;
@@ -814,7 +846,8 @@
 
             .auto-print-toggle {
                 font-size: 14px;
-                flex: 1;
+                width: 100%;
+                justify-content: flex-start;
             }
 
             /* 订单信息 */
@@ -1003,7 +1036,10 @@
                     <input type="text" id="barcodeInput" placeholder="Scan Barcode" autocomplete="off" disabled>
                 </div>
                 <div class="scan-buttons">
-                    <button class="btn btn-danger" id="markErrorBtn" disabled>⚠️ Error Order</button>
+                    <div class="action-buttons">
+                        <button class="btn btn-reset" id="resetOrderBtn" disabled data-i18n="scan.resetOrder">🔄 Reset Order</button>
+                        <button class="btn btn-force" id="forceCompleteBtn" disabled data-i18n="scan.forceComplete">✅ Force Outbound</button>
+                    </div>
                     <div class="auto-print-toggle">
                         <span data-i18n="scan.autoPrintLabel">Auto Print Label</span>
                         <label class="toggle-switch">
@@ -1049,7 +1085,6 @@
             </div>
             <div class="results-tabs">
                 <div class="results-tab active" data-tab="correct">✅ Successful</div>
-                <div class="results-tab" data-tab="error">❌ Error</div>
                 <div class="results-tab" data-tab="pending">⏳ Pending</div>
             </div>
             
@@ -1067,25 +1102,6 @@
                     <tbody>
                         <tr>
                             <td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;">No successful orders</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            
-            <div class="results-content" id="errorContent">
-                <table id="errorTable">
-                    <thead>
-                        <tr>
-                            <th>Waybill</th>
-                            <th>Order ID</th>
-                            <th>Order Time</th>
-                            <th>Scan Time</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;">No error orders</td>
                         </tr>
                     </tbody>
                 </table>
@@ -1296,6 +1312,23 @@
             }
         };
 
+        translations.en.scan.resetOrder = '🔄 Reset Order';
+        translations.yue.scan.resetOrder = '🔄 重置訂單';
+        translations.en.scan.forceComplete = '✅ Force Outbound';
+        translations.yue.scan.forceComplete = '✅ 強制出庫';
+
+        translations.en.alerts.scanComplete = 'Order {waybill} outbound completed';
+        translations.yue.alerts.scanComplete = '訂單 {waybill} 出庫完成';
+        translations.en.alerts.orderReset = 'Order {waybill} has been reset';
+        translations.yue.alerts.orderReset = '訂單 {waybill} 已重置';
+        translations.en.alerts.orderAlreadyCompleted = 'Order {waybill} is already outbound completed and cannot be scanned again';
+        translations.yue.alerts.orderAlreadyCompleted = '訂單 {waybill} 已完成出庫，不能再次掃描';
+        translations.en.alerts.forceCompleteSuccess = 'Order {waybill} force outbound completed';
+        translations.yue.alerts.forceCompleteSuccess = '訂單 {waybill} 已強制出庫完成';
+
+        translations.en.confirm.forceComplete = 'Are you sure you want to force outbound this order?';
+        translations.yue.confirm.forceComplete = '確定要強制出庫當前訂單嗎？';
+
         let currentLang = 'en';
 
         function updatePlaceholders() {
@@ -1369,7 +1402,8 @@
             document.getElementById('orderInput').placeholder = translations[lang].scan.scanWaybill;
             document.querySelector('label[for="barcodeInput"]').textContent = translations[lang].scan.barcode;
             document.getElementById('barcodeInput').placeholder = translations[lang].scan.scanBarcode;
-            document.getElementById('markErrorBtn').textContent = translations[lang].scan.errorOrder;
+            document.getElementById('resetOrderBtn').textContent = translations[lang].scan.resetOrder;
+            document.getElementById('forceCompleteBtn').textContent = translations[lang].scan.forceComplete;
             
             const autoPrintText = document.querySelector('.auto-print-toggle span[data-i18n="scan.autoPrintLabel"]');
             if (autoPrintText) {
@@ -1387,10 +1421,10 @@
             
             document.querySelector('.results-section h2').textContent = translations[lang].results.title;
             
-            const resultTabs = document.querySelectorAll('.results-tab');
-            resultTabs[0].textContent = translations[lang].results.successfulOrders;
-            resultTabs[1].textContent = translations[lang].results.errorOrders;
-            resultTabs[2].textContent = translations[lang].results.pendingOrders;
+            const correctTab = document.querySelector('.results-tab[data-tab="correct"]');
+            const pendingTab = document.querySelector('.results-tab[data-tab="pending"]');
+            if (correctTab) correctTab.textContent = translations[lang].results.successfulOrders;
+            if (pendingTab) pendingTab.textContent = translations[lang].results.pendingOrders;
             
             const correctTableHeaders = document.querySelectorAll('#correctTable th');
             correctTableHeaders[0].textContent = translations[lang].results.waybill;
@@ -1398,13 +1432,6 @@
             correctTableHeaders[2].textContent = translations[lang].results.orderTime;
             correctTableHeaders[3].textContent = translations[lang].results.scanTime;
             correctTableHeaders[4].textContent = translations[lang].results.status;
-            
-            const errorTableHeaders = document.querySelectorAll('#errorTable th');
-            errorTableHeaders[0].textContent = translations[lang].results.waybill;
-            errorTableHeaders[1].textContent = translations[lang].results.orderId;
-            errorTableHeaders[2].textContent = translations[lang].results.orderTime;
-            errorTableHeaders[3].textContent = translations[lang].results.scanTime;
-            errorTableHeaders[4].textContent = translations[lang].results.status;
             
             const pendingTableHeaders = document.querySelectorAll('#pendingTable th');
             pendingTableHeaders[0].textContent = translations[lang].results.waybill;
@@ -1446,7 +1473,8 @@
         const labelStatus = document.getElementById('labelStatus');
         const orderInput = document.getElementById('orderInput');
         const barcodeInput = document.getElementById('barcodeInput');
-        const markErrorBtn = document.getElementById('markErrorBtn');
+        const resetOrderBtn = document.getElementById('resetOrderBtn');
+        const forceCompleteBtn = document.getElementById('forceCompleteBtn');
         const autoPrintToggle = document.getElementById('autoPrintToggle');
         const productTableBody = document.getElementById('productTableBody');
         const infoAlert = document.getElementById('infoAlert');
@@ -2179,7 +2207,7 @@
         function loadOrder(waybill) {
             currentOrderId = waybill;
             
-            if (scanResults[waybill]) {
+            if (false && scanResults[waybill]) {
                 const order = scanResults[waybill];
                 if (order.status === 'completed' || order.status === 'error') {
                     const errorMessage = currentLang === 'en' ? 
@@ -2194,6 +2222,20 @@
             
             if (!orderData[waybill]) {
                 showAlert(translations[currentLang].alerts.orderDoesNotExist.replace('{waybill}', waybill), 'error');
+                return;
+            }
+
+            const completedInResults = scanResults[waybill] && scanResults[waybill].status === 'completed';
+            const completedInOrderData = orderData[waybill].status === 'completed';
+            if (completedInResults || completedInOrderData) {
+                showAlert(translations[currentLang].alerts.orderAlreadyCompleted.replace('{waybill}', waybill), 'info');
+                orderInput.value = '';
+                orderInput.disabled = false;
+                barcodeInput.value = '';
+                barcodeInput.disabled = true;
+                resetOrderBtn.disabled = true;
+                forceCompleteBtn.disabled = true;
+                orderInput.focus();
                 return;
             }
             
@@ -2261,7 +2303,8 @@
             barcodeInput.disabled = false;
             barcodeInput.focus();
             
-            markErrorBtn.disabled = false;
+            resetOrderBtn.disabled = false;
+            forceCompleteBtn.disabled = false;
         }
 
         // 渲染商品表格
@@ -2544,11 +2587,14 @@
         }
 
         // 完成订单
-        function completeOrder() {
+        function completeOrder(options = {}) {
             if (!currentOrder) return;
+
+            const isForced = options.forced === true;
             
             currentOrder.scanTime = new Date().toLocaleString();
             currentOrder.status = 'completed';
+            currentOrder.scanProgress = 100;
             
             scanResults[currentOrder.waybill] = {
                 ...currentOrder
@@ -2558,7 +2604,8 @@
                 ...currentOrder
             };
             
-            showAlert(translations[currentLang].alerts.scanComplete.replace('{waybill}', currentOrder.waybill), 'success');
+            const completeMessageKey = isForced ? 'forceCompleteSuccess' : 'scanComplete';
+            showAlert(translations[currentLang].alerts[completeMessageKey].replace('{waybill}', currentOrder.waybill), 'success');
             
             updateResultsTables();
             updateStats();
@@ -2571,40 +2618,10 @@
             }
             
             // 清空并重置
-            resetPage();
-        }
-
-        // 标记错误按钮
-        markErrorBtn.addEventListener('click', function() {
-            if (!currentOrder) return;
-            
-            if (confirm(translations[currentLang].confirm.markError)) {
-                currentOrder.status = 'error';
-                currentOrder.scanTime = new Date().toLocaleString();
-                
-                scanResults[currentOrder.waybill] = {
-                    ...currentOrder
-                };
-                
-                orderData[currentOrder.waybill] = {
-                    ...currentOrder
-                };
-                
-                showAlert(translations[currentLang].alerts.orderMarkedError.replace('{waybill}', currentOrder.waybill), 'error');
-                
-                updateResultsTables();
-                updateStats();
-                
-                // 保存扫描结果到localStorage
-                try {
-                    localStorage.setItem('offlineScan_scanResults', JSON.stringify(scanResults));
-                } catch (error) {
-                    console.error('Failed to save scan results:', error);
-                }
-                
+            setTimeout(() => {
                 resetPage();
-            }
-        });
+            }, 2000);
+        }
 
         // 重置页面
         function resetPage() {
@@ -2617,12 +2634,37 @@
             orderInput.disabled = false;
             barcodeInput.value = '';
             barcodeInput.disabled = true;
-            markErrorBtn.disabled = true;
+            resetOrderBtn.disabled = true;
+            forceCompleteBtn.disabled = true;
             
             productTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;"><span data-i18n="order.scanFirst"></span></td></tr>';
             
             orderInput.focus();
         }
+
+        resetOrderBtn.addEventListener('click', function() {
+            if (!currentOrder) {
+                return;
+            }
+
+            const waybill = currentOrder.waybill;
+            resetPage();
+            updateResultsTables();
+            updateStats();
+            showAlert(translations[currentLang].alerts.orderReset.replace('{waybill}', waybill), 'info');
+        });
+
+        forceCompleteBtn.addEventListener('click', function() {
+            if (!currentOrder) {
+                return;
+            }
+
+            if (!confirm(translations[currentLang].confirm.forceComplete)) {
+                return;
+            }
+
+            completeOrder({ forced: true });
+        });
 
         // 结果标签切换
         const resultTabs = document.querySelectorAll('.results-tab');
@@ -2642,7 +2684,6 @@
         // 更新结果表格
         function updateResultsTables() {
             updateCorrectTable();
-            updateErrorTable();
             updatePendingTable();
         }
 
@@ -2677,37 +2718,6 @@
             updatePlaceholders();
         }
 
-        // 更新错误扫描表格
-        function updateErrorTable() {
-            const tbody = document.querySelector('#errorTable tbody');
-            tbody.innerHTML = '';
-            
-            const errorOrders = Object.values(scanResults).filter(order => order.status === 'error');
-            
-            if (errorOrders.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;"><span data-i18n="results.noError"></span></td></tr>`;
-                return;
-            }
-            
-            errorOrders.forEach(order => {
-                const row = document.createElement('tr');
-                const orderDateTime = formatDateTime(order.orderDate, order.orderTime);
-                // 格式化扫描时间
-                const formattedScanTime = formatScanTime(order.scanTime);
-                row.innerHTML = `
-                    <td><strong>${order.waybill}</strong></td>
-                    <td>${order.orderId || '-'}</td>
-                    <td>${orderDateTime || '-'}</td>
-                    <td>${formattedScanTime || '-'}</td>
-                    <td><span class="status-error" data-i18n="results.error"></span></td>
-                `;
-                tbody.appendChild(row);
-            });
-            
-            // 更新占位符
-            updatePlaceholders();
-        }
-
         // 更新待处理表格
         function updatePendingTable() {
             const tbody = document.querySelector('#pendingTable tbody');
@@ -2720,9 +2730,9 @@
             for (const waybill in orderData) {
                 allOrders[waybill] = {
                     ...orderData[waybill],
-                    status: 'pending',
-                    scanProgress: 0,
-                    scanTime: null
+                    status: orderData[waybill].status || 'pending',
+                    scanProgress: orderData[waybill].scanProgress || 0,
+                    scanTime: orderData[waybill].scanTime || null
                 };
             }
             
@@ -2740,7 +2750,7 @@
             }
             
             // 过滤出待处理订单
-            const pendingOrders = Object.values(allOrders).filter(order => order.status !== 'completed' && order.status !== 'error');
+            const pendingOrders = Object.values(allOrders).filter(order => order.status === 'pending');
             
             if (pendingOrders.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;"><span data-i18n="results.noPending"></span></td></tr>`;
