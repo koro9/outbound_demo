@@ -1,0 +1,3463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>扫描综合版</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .language-switcher {
+            position: relative;
+            margin: 0 auto 20px;
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            z-index: 1000;
+            max-width: 200px;
+        }
+
+        .lang-btn {
+            padding: 6px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            background-color: white;
+            color: #4a5568;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .lang-btn:hover {
+            background-color: #f7fafc;
+            border-color: #667eea;
+        }
+
+        .lang-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2d3748;
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .upload-section {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2%;
+            margin-bottom: 30px;
+            padding: 25px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 12px;
+            border: 2px solid #e2e8f0;
+        }
+
+        .clear-data-group {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .clear-data-group .btn {
+            width: 200px;
+            height: 100px;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            text-align: center;
+        }
+
+        .upload-group {
+            position: relative;
+        }
+
+        .upload-group label {
+            display: block;
+            margin-bottom: 12px;
+            font-weight: 600;
+            color: #4a5568;
+            font-size: 16px;
+        }
+
+        .upload-group input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            background-color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-group input[type="file"]:hover {
+            border-color: #667eea;
+            background-color: #f7fafc;
+        }
+
+        /* 自定义文件上传样式 */
+        .custom-file-upload {
+            position: relative;
+            width: 100%;
+        }
+
+        .custom-file-upload input[type="file"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        .custom-file-upload .file-label {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            background-color: white;
+            color: #4a5568;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            z-index: 1;
+        }
+
+        .custom-file-upload:hover .file-label {
+            border-color: #667eea;
+            background-color: #f7fafc;
+        }
+
+        .upload-status {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #718096;
+            padding: 8px 12px;
+            border-radius: 6px;
+            background-color: white;
+        }
+
+        .upload-status.success {
+            color: #2f855a;
+            background-color: #f0fff4;
+            border: 1px solid #c6f6d5;
+        }
+
+        .upload-status.error {
+            color: #c53030;
+            background-color: #fff5f5;
+            border: 1px solid #fed7d7;
+        }
+
+        .scan-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+            align-items: start;
+        }
+
+        .scan-left {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .order-info {
+            background: linear-gradient(135deg, #ebf4ff 0%, #c3dafe 100%);
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid #bee3f8;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            min-height: 200px;
+        }
+
+        .order-info .info-label {
+            font-size: 20px;
+            font-weight: 700;
+            color: #2c5282;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #bee3f8;
+        }
+
+        .order-info h2 {
+            font-size: 28px;
+            margin-bottom: 12px;
+            color: #2c5282;
+            font-weight: 700;
+        }
+
+        .order-info p {
+            margin: 8px 0;
+            color: #4a5568;
+            font-size: 16px;
+        }
+
+        .order-info .empty-state {
+            color: #a0aec0;
+            font-style: italic;
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .input-group {
+            position: relative;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #4a5568;
+            font-size: 16px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 14px 18px;
+            font-size: 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            transition: all 0.3s;
+            background-color: white;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .input-group input:disabled {
+            background-color: #edf2f7;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .btn {
+            padding: 10px 28px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #fc8181 0%, #f56565 100%);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+        }
+
+        .btn:disabled {
+            background: linear-gradient(135deg, #a0aec0 0%, #718096 100%);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-top: 25px;
+            margin-bottom: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        table {
+            min-width: 800px;
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            background-color: white;
+        }
+
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 700;
+            padding: 16px;
+            text-align: left;
+            font-size: 15px;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #4a5568;
+        }
+
+        /* 商品列表列宽度和样式 */
+        #productTable th:nth-child(1),
+        #productTable td:nth-child(1) {
+            width: 180px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #productTable th:nth-child(2),
+        #productTable td:nth-child(2) {
+            max-width: 300px;
+            min-width: 200px;
+            white-space: normal;
+            line-height: 1.4;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #productTable th:nth-child(3),
+        #productTable td:nth-child(3) {
+            width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #productTable th:nth-child(4),
+        #productTable td:nth-child(4),
+        #productTable th:nth-child(5),
+        #productTable td:nth-child(5) {
+            width: 100px;
+            text-align: center;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f7fafc;
+        }
+
+        tr:hover {
+            background-color: #edf2f7;
+        }
+
+        .status-correct {
+            color: #2f855a;
+            font-weight: 700;
+            background-color: #f0fff4;
+            padding: 4px 12px;
+            border-radius: 20px;
+            display: inline-block;
+        }
+
+        .status-error {
+            color: #c53030;
+            font-weight: 700;
+            background-color: #fff5f5;
+            padding: 4px 12px;
+            border-radius: 20px;
+            display: inline-block;
+        }
+
+        .status-pending {
+            color: #d69e2e;
+            font-weight: 700;
+            background-color: #fffff0;
+            padding: 4px 12px;
+            border-radius: 20px;
+            display: inline-block;
+        }
+
+        .quantity-input {
+            width: 90px;
+            padding: 8px 12px;
+            font-size: 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .quantity-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .results-section {
+            margin-top: 40px;
+            padding: 25px;
+            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+            border-radius: 12px;
+            border: 2px solid #e2e8f0;
+        }
+
+        .results-section h2 {
+            margin-bottom: 20px;
+            color: #2d3748;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .results-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+            background-color: white;
+            padding: 8px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .results-tab {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background-color: transparent;
+            color: #718096;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .results-tab:hover {
+            background-color: #f7fafc;
+            color: #4a5568;
+        }
+
+        .results-tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
+        }
+
+        .results-content {
+            display: none;
+        }
+
+        .results-content.active {
+            display: block;
+        }
+
+        .alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 16px 20px;
+            border-radius: 10px;
+            display: none;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 10000;
+            max-width: 300px;
+        }
+
+        .alert.show {
+            display: block;
+            animation: slideInRight 0.3s ease-out;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes slideOutRight {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+        }
+
+        .alert.hide {
+            animation: slideOutRight 0.3s ease-in;
+        }
+
+        .alert-success {
+            background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%);
+            border: 2px solid #9ae6b4;
+            color: #22543d;
+        }
+
+        .alert-error {
+            background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+            border: 2px solid #feb2b2;
+            color: #742a2a;
+        }
+
+        .alert-info {
+            background: linear-gradient(135deg, #ebf8ff 0%, #bee3f8 100%);
+            border: 2px solid #90cdf4;
+            color: #2a4365;
+        }
+
+        .product-row {
+            transition: all 0.3s;
+        }
+
+        .product-row.highlight {
+            background-color: #fefcbf !important;
+            animation: pulse 0.5s ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.02);
+            }
+        }
+
+        .product-row.completed {
+            background-color: #f0fff4;
+        }
+
+        .product-row.completed td {
+            color: #22543d;
+        }
+
+        .product-row.error {
+            background-color: #fff5f5;
+        }
+
+        .product-row.error td {
+            color: #742a2a;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .stat-card h3 {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .stat-card p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .stat-card.success {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        }
+
+        .stat-card.error {
+            background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+        }
+
+        .stat-card.pending {
+            background: linear-gradient(135deg, #ecc94b 0%, #d69e2e 100%);
+        }
+
+        .clear-data-btn {
+            margin-top: 20px;
+            background: linear-gradient(135deg, #a0aec0 0%, #718096 100%);
+            color: white;
+        }
+
+        /* 新增：扫描区域按钮容器 */
+        .scan-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .scan-buttons button {
+            flex: 1;
+            justify-content: center;
+        }
+
+        /* 新增：自动打印开关样式 */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: #667eea;
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+
+        .auto-print-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        @media (max-width: 768px) {
+            /* 容器调整 */
+            body {
+                padding: 0;
+                margin: 0;
+                min-height: 100vh;
+                overflow-x: hidden;
+            }
+
+            .container {
+                padding: 15px;
+                width: 100%;
+                min-height: 100vh;
+                box-sizing: border-box;
+            }
+
+            h1 {
+                font-size: 20px;
+                margin-bottom: 20px;
+            }
+
+            /* 统计组 - 同行显示 */
+            .stats-grid {
+                display: flex;
+                gap: 10px;
+                overflow-x: auto;
+                padding-bottom: 10px;
+                margin-bottom: 20px;
+            }
+
+            .stat-card {
+                flex: 1;
+                min-width: 80px;
+                padding: 15px;
+            }
+
+            .stat-card h3 {
+                font-size: 24px;
+            }
+
+            .stat-card p {
+                font-size: 12px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            /* 上传区域 - 分三行显示，只保留上传控件 */
+            .upload-section {
+                display: flex;
+                flex-direction: column;
+                gap: 15px;
+                padding: 20px;
+                margin-bottom: 20px;
+            }
+
+            .upload-group label {
+                display: block;
+                font-size: 14px;
+                margin-bottom: 8px;
+            }
+
+            .upload-group .upload-status {
+                display: none;
+            }
+
+            .custom-file-upload {
+                width: 100%;
+            }
+
+            .clear-data-group {
+                width: 100%;
+                margin-top: 10px;
+            }
+
+            .clear-data-group .btn {
+                width: 100%;
+                height: 60px;
+                font-size: 14px;
+            }
+
+            /* 扫描区域 */
+            .scan-section {
+                display: flex;
+                flex-direction: column;
+                gap: 15px;
+                margin-bottom: 20px;
+            }
+
+            .scan-left {
+                gap: 15px;
+                width: 100%;
+            }
+
+            .input-group {
+                width: 100%;
+            }
+
+            .input-group input {
+                width: 100%;
+                padding: 12px;
+                font-size: 14px;
+                box-sizing: border-box;
+            }
+
+            .scan-left {
+                width: 100%;
+            }
+
+            .scan-buttons {
+                display: flex;
+                gap: 10px;
+                align-items: center;
+                width: 100%;
+            }
+
+            .scan-buttons button {
+                flex: 1;
+                font-size: 14px;
+                padding: 10px;
+            }
+
+            .auto-print-toggle {
+                font-size: 14px;
+                flex: 1;
+            }
+
+            /* 订单信息 */
+            .order-info {
+                padding: 15px;
+                width: 100%;
+                box-sizing: border-box;
+                margin-bottom: 20px;
+            }
+
+            #orderContent {
+                width: 100%;
+            }
+
+            .order-info .info-label {
+                font-size: 16px;
+                margin-bottom: 15px;
+            }
+
+            .order-info p {
+                font-size: 14px;
+                margin: 6px 0;
+            }
+
+            /* 表格容器 - 添加横向滚动 */
+            .table-container {
+                overflow-x: auto;
+                margin-top: 20px;
+                margin-bottom: 30px;
+                width: 100%;
+                box-sizing: border-box;
+            }
+
+            table {
+                min-width: 600px;
+                width: 100%;
+            }
+
+            th, td {
+                font-size: 12px;
+                padding: 8px;
+            }
+
+            /* H5模式下商品名称列固定宽度 */
+            #productTable th:nth-child(2),
+            #productTable td:nth-child(2) {
+                width: 180px;
+                white-space: normal;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            
+            /* H5模式下Product ID列固定宽度 */
+            #productTable th:nth-child(1),
+            #productTable td:nth-child(1) {
+                width: 150px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            /* 确保结果模块中的表格适应宽度并添加滚动条 */
+            .results-content {
+                margin-top: 15px;
+                width: 100%;
+                overflow-x: auto;
+                max-width: 100%;
+            }
+
+            .results-content table {
+                min-width: 600px;
+                width: 100%;
+                max-width: 100%;
+            }
+
+            .results-content th, 
+            .results-content td {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .results-tabs {
+                display: flex;
+                gap: 5px;
+                overflow-x: auto;
+                padding-bottom: 5px;
+                width: 100%;
+            }
+
+            .results-tab {
+                flex: 1;
+                min-width: 80px;
+                padding: 8px;
+                font-size: 12px;
+                text-align: center;
+            }
+
+            .results-content {
+                margin-top: 15px;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📦 扫描综合版</h1>
+        <div class="language-switcher">
+            <button class="lang-btn active" data-lang="en">English</button>
+            <button class="lang-btn" data-lang="yue">中文</button>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="stats-grid">
+            <div class="stat-card success">
+                <h3 id="correctCount">0</h3>
+                <p>Success</p>
+            </div>
+            <div class="stat-card error">
+                <h3 id="errorCount">0</h3>
+                <p>Error</p>
+            </div>
+            <div class="stat-card pending">
+                <h3 id="pendingCount">0</h3>
+                <p>Pending</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="totalCount">0</h3>
+                <p>Total</p>
+            </div>
+        </div>
+
+        <!-- 上传区域 -->
+        <div class="upload-section">
+            <div class="upload-group">
+                <div class="custom-file-upload">
+                    <input type="file" id="orderExcel" accept=".xlsx,.xls,.csv">
+                    <span class="file-label"><span data-i18n="upload.chooseOrderFile"></span></span>
+                </div>
+                <div class="upload-status" id="orderStatus"><span data-i18n="upload.waiting"></span></div>
+            </div>
+            <div class="upload-group">
+                <div class="custom-file-upload">
+                    <input type="file" id="skuExcel" accept=".xlsx,.xls,.csv">
+                    <span class="file-label"><span data-i18n="upload.chooseProductFile"></span></span>
+                </div>
+                <div class="upload-status" id="skuStatus"><span data-i18n="upload.waiting"></span></div>
+            </div>
+            <div class="upload-group">
+                <div class="custom-file-upload">
+                    <input type="file" id="labelExcel" accept=".xlsx,.xls">
+                    <span class="file-label"><span data-i18n="upload.chooseLabelFile"></span></span>
+                </div>
+                <div class="upload-status" id="labelStatus"><span data-i18n="upload.waiting"></span></div>
+            </div>
+        </div>
+
+        <!-- 加载提示 -->
+        <div class="loading-overlay" id="loadingOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(255, 255, 255, 0.8); z-index: 9999; flex-direction: column; justify-content: center; align-items: center;">
+            <div style="font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #667eea;">Loading Files...</div>
+            <div style="width: 100px; height: 100px; border: 8px solid #f3f3f3; border-top: 8px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            <div id="loadingProgress" style="margin-top: 20px; font-size: 16px; color: #4a5568;">Preparing to load files...</div>
+            <style>
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            </style>
+        </div>
+
+        <!-- 提示信息 -->
+        <div class="alert alert-info" id="infoAlert">
+            <span data-i18n="infoAlert"></span>
+        </div>
+
+        <!-- 扫描区域 -->
+        <div class="scan-section">
+            <div class="scan-left">
+                <div class="input-group">
+                    <label for="orderInput">🔍 Waybill</label>
+                    <input type="text" id="orderInput" placeholder="Scan Waybill" autocomplete="off">
+                </div>
+                <div class="input-group">
+                    <label for="barcodeInput">📷 Barcode</label>
+                    <input type="text" id="barcodeInput" placeholder="Scan Barcode" autocomplete="off" disabled>
+                </div>
+                <div class="scan-buttons">
+                    <button class="btn btn-danger" id="markErrorBtn" disabled>⚠️ Error Order</button>
+                    <div class="auto-print-toggle">
+                        <span data-i18n="scan.autoPrintLabel">Auto Print Label</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="autoPrintToggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="order-info" id="orderInfo">
+                <div class="info-label">Order</div>
+                <div id="orderContent">
+                    <div class="empty-state"><span data-i18n="order.scanFirst"></span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 商品列表 -->
+        <div class="table-container">
+            <table id="productTable">
+                <thead>
+                    <tr>
+                        <th>Product ID</th>
+                        <th>Product Name</th>
+                        <th>Barcode</th>
+                        <th>Quantity</th>
+                        <th>Scan Quantity</th>
+                    </tr>
+                </thead>
+                <tbody id="productTableBody">
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;"><span data-i18n="order.scanFirst"></span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 结果查询 -->
+        <div class="results-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2>📊 Scan Results</h2>
+            </div>
+            <div class="results-tabs">
+                <div class="results-tab active" data-tab="correct">✅ Successful</div>
+                <div class="results-tab" data-tab="error">❌ Error</div>
+                <div class="results-tab" data-tab="pending">⏳ Pending</div>
+            </div>
+            
+            <div class="results-content active" id="correctContent">
+                <table id="correctTable">
+                    <thead>
+                        <tr>
+                            <th>Waybill</th>
+                            <th>Order ID</th>
+                            <th>Order Time</th>
+                            <th>Scan Time</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;">No successful orders</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="results-content" id="errorContent">
+                <table id="errorTable">
+                    <thead>
+                        <tr>
+                            <th>Waybill</th>
+                            <th>Order ID</th>
+                            <th>Order Time</th>
+                            <th>Scan Time</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;">No error orders</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="results-content" id="pendingContent">
+                <table id="pendingTable">
+                    <thead>
+                        <tr>
+                            <th>Waybill</th>
+                            <th>Order ID</th>
+                            <th>Order Time</th>
+                            <th>Product Count</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;">No pending orders</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const translations = {
+            en: {
+                pageTitle: 'Order Scanning System',
+                header: '📦 Order Scanning System',
+                stats: {
+                    success: 'Success',
+                    error: 'Error',
+                    pending: 'Pending',
+                    total: 'Total'
+                },
+                upload: {
+                    orderFile: '📋 Upload Order File',
+                    skuFile: '📦 Upload Product File',
+                    labelFile: '🏷️ Upload Label Excel',
+                    chooseOrderFile: 'Choose Order File',
+                    chooseProductFile: 'Choose Product File',
+                    chooseLabelFile: 'Choose Label File',
+                    chooseFile: 'Choose File',
+                    waiting: 'Waiting for upload...',
+                    success: 'Upload successful',
+                    failed: 'Upload failed',
+                    ordersLoaded: 'orders loaded',
+                    skusLoaded: 'SKUs loaded'
+                },
+                infoAlert: 'Please upload order Excel and SKU list Excel files first, then start scanning.',
+                scan: {
+                    waybill: '🔍 Waybill',
+                    scanWaybill: 'Scan Waybill',
+                    barcode: '📷 Barcode',
+                    scanBarcode: 'Scan Barcode',
+                    errorOrder: '⚠️ Error Order',
+                    autoPrintLabel: 'Auto Print Label'
+                },
+                order: {
+                    title: 'Order',
+                    scanFirst: 'Please scan waybill first',
+                    waybill: 'Waybill',
+                    orderId: 'Order ID',
+                    orderTime: 'Order Time',
+                    pickupTime: 'Pickup Time',
+                    deliveryTime: 'Delivery Time',
+                    productCount: 'Product Count',
+                    notSet: 'Not set'
+                },
+                productTable: {
+                    productId: 'Product ID',
+                    productName: 'Product Name',
+                    barcode: 'Barcode',
+                    quantity: 'Quantity',
+                    scanQuantity: 'Scan Quantity',
+                    noData: 'No product data'
+                },
+                results: {
+                    title: '📊 Scan Results',
+                    clearData: '🗑️ Clear All Data',
+                    successfulOrders: '✅ Successful',
+                    errorOrders: '❌ Error',
+                    pendingOrders: '⏳ Pending',
+                    waybill: 'Waybill',
+                    orderId: 'Order ID',
+                    orderTime: 'Order Time',
+                    scanTime: 'Scan Time',
+                    productCount: 'Product Count',
+                    status: 'Status',
+                    noSuccessful: 'No successful orders',
+                    noError: 'No error orders',
+                    noPending: 'No pending orders',
+                    completed: 'Completed',
+                    error: 'Error',
+                    pending: 'Pending'
+                },
+                alerts: {
+                    orderLoaded: 'Order loaded successfully, please scan product barcode',
+                    scanSuccess: 'Scan successful: {productId}',
+                    productSufficient: 'Product {productId} already sufficient',
+                    noMatchingProduct: 'No matching product found: {barcode}',
+                    scanComplete: 'Order {waybill} scan completed',
+                    orderMarkedError: 'Order {waybill} marked as error',
+                    dataCleared: 'All data cleared',
+                    filesReady: 'Files uploaded successfully, ready to scan',
+                    dataLoaded: 'Data loaded from cache, ready to scan',
+                    orderFileUploaded: 'Order file uploaded successfully',
+                    skuFileUploaded: 'SKU file uploaded successfully',
+                    orderDoesNotExist: 'Order does not exist: {waybill}',
+                    scanWaybillFirst: 'Please scan waybill first'
+                },
+                confirm: {
+                    markError: 'Are you sure you want to mark the current order as error?',
+                    clearData: 'Are you sure you want to clear all data? This operation cannot be undone!'
+                }
+            },
+            yue: {
+                pageTitle: '訂單掃描系統',
+                header: '📦 訂單掃描系統',
+                stats: {
+                    success: '成功',
+                    error: '錯誤',
+                    pending: '待處理',
+                    total: '總計'
+                },
+                upload: {
+                    orderFile: '📋 上传订单文件',
+                    skuFile: '📦 上传商品文件',
+                    labelFile: '🏷️ 上传标签Excel',
+                    chooseOrderFile: '选择订单文件',
+                    chooseProductFile: '选择商品文件',
+                    chooseLabelFile: '选择标签文件',
+                    chooseFile: '選擇文件',
+                    waiting: '等待上傳...',
+                    success: '上傳成功',
+                    failed: '上傳失敗',
+                    ordersLoaded: '個訂單已加載',
+                    skusLoaded: '個SKU已加載'
+                },
+                infoAlert: '請先上傳訂單Excel和SKU列表Excel文件，然後開始掃描。',
+                scan: {
+                    waybill: '🔍 運單號',
+                    scanWaybill: '掃描運單號',
+                    barcode: '📷 商品條碼',
+                    scanBarcode: '掃描商品條碼',
+                    errorOrder: '⚠️ 異常訂單',
+                    autoPrintLabel: '自動打印標籤'
+                },
+                order: {
+                    title: '訂單信息',
+                    scanFirst: '請先掃描運單號',
+                    waybill: '運單號',
+                    orderId: '訂單號',
+                    orderTime: '訂單時間',
+                    pickupTime: '打包時間',
+                    deliveryTime: '配送時間',
+                    productCount: '商品數量',
+                    notSet: '未設定'
+                },
+                productTable: {
+                    productId: '商品ID',
+                    productName: '商品名稱',
+                    barcode: 'Barcode',
+                    quantity: '商品數量',
+                    scanQuantity: '掃描數量',
+                    noData: '暫無商品數據'
+                },
+                results: {
+                    title: '📊 扫描结果',
+                    clearData: '🗑️ 清空所有數據',
+                    successfulOrders: '✅ 成功',
+                    errorOrders: '❌ 異常',
+                    pendingOrders: '⏳ 待處理',
+                    waybill: '運單號',
+                    orderId: '訂單號',
+                    orderTime: '訂單時間',
+                    scanTime: '掃描時間',
+                    productCount: '商品數量',
+                    status: '狀態',
+                    noSuccessful: '無成功訂單',
+                    noError: '無異常訂單',
+                    noPending: '無待處理訂單',
+                    completed: '已完成',
+                    error: '錯誤',
+                    pending: '待處理'
+                },
+                alerts: {
+                    orderLoaded: '訂單加載成功，請掃描商品條碼',
+                    scanSuccess: '掃描成功: {productId}',
+                    productSufficient: '商品 {productId} 已經足夠',
+                    noMatchingProduct: '未找到匹配的商品: {barcode}',
+                    scanComplete: '訂單 {waybill} 掃描完成',
+                    orderMarkedError: '訂單 {waybill} 已標記為錯誤',
+                    dataCleared: '所有數據已清除',
+                    filesReady: '文件上傳完成，可以開始掃描',
+                    dataLoaded: '數據已從緩存加載，可以開始掃描',
+                    orderFileUploaded: '訂單文件上傳成功',
+                    skuFileUploaded: 'SKU文件上傳成功',
+                    orderDoesNotExist: '訂單不存在: {waybill}',
+                    scanWaybillFirst: '請先掃描運單號'
+                },
+                confirm: {
+                    markError: '確定要標記當前訂單為錯誤訂單嗎？',
+                    clearData: '確定要清除所有數據嗎？此操作不可恢復！'
+                }
+            }
+        };
+
+        let currentLang = 'en';
+
+        function updatePlaceholders() {
+            document.querySelectorAll('[data-i18n]').forEach(element => {
+                const key = element.dataset.i18n;
+                const keys = key.split('.');
+                let value = translations[currentLang];
+                
+                for (const k of keys) {
+                    if (value && value[k]) {
+                        value = value[k];
+                    } else {
+                        value = key;
+                        break;
+                    }
+                }
+                
+                element.textContent = value;
+            });
+        }
+
+        function changeLanguage(lang) {
+            currentLang = lang;
+            
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.lang === lang) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            document.title = translations[lang].pageTitle;
+            document.querySelector('h1').textContent = translations[lang].header;
+            
+            document.querySelector('.stat-card:nth-child(1) p').textContent = translations[lang].stats.success;
+            document.querySelector('.stat-card:nth-child(2) p').textContent = translations[lang].stats.error;
+            document.querySelector('.stat-card:nth-child(3) p').textContent = translations[lang].stats.pending;
+            document.querySelector('.stat-card:nth-child(4) p').textContent = translations[lang].stats.total;
+            
+            const orderLabel = document.querySelector('label[for="orderExcel"]');
+            if (orderLabel) {
+                orderLabel.textContent = translations[lang].upload.orderFile;
+            }
+            const skuLabel = document.querySelector('label[for="skuExcel"]');
+            if (skuLabel) {
+                skuLabel.textContent = translations[lang].upload.skuFile;
+            }
+            const labelLabel = document.querySelector('label[for="labelExcel"]');
+            if (labelLabel) {
+                labelLabel.textContent = translations[lang].upload.labelFile;
+            }
+            
+            const orderStatusEl = document.getElementById('orderStatus');
+            const skuStatusEl = document.getElementById('skuStatus');
+            
+            if (orderStatusEl.classList.contains('success') && Object.keys(orderData).length > 0) {
+                const orderCount = Object.keys(orderData).length;
+                orderStatusEl.textContent = `${translations[lang].upload.success}, ${orderCount} ${translations[lang].upload.ordersLoaded}`;
+            } else {
+                orderStatusEl.textContent = translations[lang].upload.waiting;
+            }
+            
+            if (skuStatusEl.classList.contains('success') && Object.keys(skuData).length > 0) {
+                const skuCount = Object.keys(skuData).length;
+                skuStatusEl.textContent = `${translations[lang].upload.success}, ${skuCount} ${translations[lang].upload.skusLoaded}`;
+            } else {
+                skuStatusEl.textContent = translations[lang].upload.waiting;
+            }
+            
+            document.querySelector('label[for="orderInput"]').textContent = translations[lang].scan.waybill;
+            document.getElementById('orderInput').placeholder = translations[lang].scan.scanWaybill;
+            document.querySelector('label[for="barcodeInput"]').textContent = translations[lang].scan.barcode;
+            document.getElementById('barcodeInput').placeholder = translations[lang].scan.scanBarcode;
+            document.getElementById('markErrorBtn').textContent = translations[lang].scan.errorOrder;
+            
+            const autoPrintText = document.querySelector('.auto-print-toggle span[data-i18n="scan.autoPrintLabel"]');
+            if (autoPrintText) {
+                autoPrintText.textContent = translations[lang].scan.autoPrintLabel;
+            }
+            
+            document.querySelector('.info-label').textContent = translations[lang].order.title;
+            
+            const productTableHeaders = document.querySelectorAll('#productTable th');
+            productTableHeaders[0].textContent = translations[lang].productTable.productId;
+            productTableHeaders[1].textContent = translations[lang].productTable.productName;
+            productTableHeaders[2].textContent = translations[lang].productTable.barcode;
+            productTableHeaders[3].textContent = translations[lang].productTable.quantity;
+            productTableHeaders[4].textContent = translations[lang].productTable.scanQuantity;
+            
+            document.querySelector('.results-section h2').textContent = translations[lang].results.title;
+            
+            const resultTabs = document.querySelectorAll('.results-tab');
+            resultTabs[0].textContent = translations[lang].results.successfulOrders;
+            resultTabs[1].textContent = translations[lang].results.errorOrders;
+            resultTabs[2].textContent = translations[lang].results.pendingOrders;
+            
+            const correctTableHeaders = document.querySelectorAll('#correctTable th');
+            correctTableHeaders[0].textContent = translations[lang].results.waybill;
+            correctTableHeaders[1].textContent = translations[lang].results.orderId;
+            correctTableHeaders[2].textContent = translations[lang].results.orderTime;
+            correctTableHeaders[3].textContent = translations[lang].results.scanTime;
+            correctTableHeaders[4].textContent = translations[lang].results.status;
+            
+            const errorTableHeaders = document.querySelectorAll('#errorTable th');
+            errorTableHeaders[0].textContent = translations[lang].results.waybill;
+            errorTableHeaders[1].textContent = translations[lang].results.orderId;
+            errorTableHeaders[2].textContent = translations[lang].results.orderTime;
+            errorTableHeaders[3].textContent = translations[lang].results.scanTime;
+            errorTableHeaders[4].textContent = translations[lang].results.status;
+            
+            const pendingTableHeaders = document.querySelectorAll('#pendingTable th');
+            pendingTableHeaders[0].textContent = translations[lang].results.waybill;
+            pendingTableHeaders[1].textContent = translations[lang].results.orderId;
+            pendingTableHeaders[2].textContent = translations[lang].results.orderTime;
+            pendingTableHeaders[3].textContent = translations[lang].results.productCount;
+            pendingTableHeaders[4].textContent = translations[lang].results.status;
+            
+            updatePlaceholders();
+            updateResultsTables();
+        }
+
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const lang = this.dataset.lang;
+                changeLanguage(lang);
+            });
+        });
+
+        let orderData = {};
+        let skuData = {};
+        let labelData = {};
+        let currentOrder = null;
+        let scanResults = {};
+        let currentOrderId = '';
+        
+        let orderFileData = null;
+        let skuFileData = null;
+        let labelFileData = null;
+        
+        const DB_NAME = 'scanSystemDB';
+        const DB_VERSION = 1;
+
+        const orderExcelInput = document.getElementById('orderExcel');
+        const skuExcelInput = document.getElementById('skuExcel');
+        const labelExcelInput = document.getElementById('labelExcel');
+        const orderStatus = document.getElementById('orderStatus');
+        const skuStatus = document.getElementById('skuStatus');
+        const labelStatus = document.getElementById('labelStatus');
+        const orderInput = document.getElementById('orderInput');
+        const barcodeInput = document.getElementById('barcodeInput');
+        const markErrorBtn = document.getElementById('markErrorBtn');
+        const autoPrintToggle = document.getElementById('autoPrintToggle');
+        const productTableBody = document.getElementById('productTableBody');
+        const infoAlert = document.getElementById('infoAlert');
+
+        const correctCountEl = document.getElementById('correctCount');
+        const errorCountEl = document.getElementById('errorCount');
+        const pendingCountEl = document.getElementById('pendingCount');
+        const totalCountEl = document.getElementById('totalCount');
+
+        function openDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                
+                request.onerror = function(event) {
+                    console.error('Database error:', event.target.error);
+                    reject(event.target.error);
+                };
+                
+                request.onsuccess = function(event) {
+                    resolve(event.target.result);
+                };
+                
+                request.onupgradeneeded = function(event) {
+                    const db = event.target.result;
+                    
+                    if (!db.objectStoreNames.contains('files')) {
+                        db.createObjectStore('files', { keyPath: 'id' });
+                    }
+                };
+            });
+        }
+
+        async function storeFileData(fileType, fileName, fileData) {
+            try {
+                const db = await openDatabase();
+                const transaction = db.transaction(['files'], 'readwrite');
+                const store = transaction.objectStore('files');
+                
+                const base64Data = arrayBufferToBase64(fileData);
+                
+                const fileDataObject = {
+                    id: fileType,
+                    fileName: fileName,
+                    fileData: base64Data,
+                    timestamp: Date.now()
+                };
+                
+                store.put(fileDataObject);
+                
+                await new Promise((resolve, reject) => {
+                    transaction.oncomplete = resolve;
+                    transaction.onerror = reject;
+                });
+                
+                console.log(`File data stored for ${fileType}: ${fileName}`);
+            } catch (error) {
+                console.error('Failed to store file data:', error);
+                showAlert('Failed to store file data. Please re-upload file after refresh.', 'error');
+            }
+        }
+
+        function arrayBufferToBase64(buffer) {
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            const len = bytes.byteLength;
+            for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return btoa(binary);
+        }
+
+        function base64ToArrayBuffer(base64) {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        async function getFileData(fileType) {
+            try {
+                const db = await openDatabase();
+                const transaction = db.transaction(['files'], 'readonly');
+                const store = transaction.objectStore('files');
+                
+                const request = store.get(fileType);
+                
+                return new Promise((resolve, reject) => {
+                    request.onsuccess = function() {
+                        const result = request.result;
+                        if (result && result.fileData) {
+                            result.fileData = base64ToArrayBuffer(result.fileData);
+                        }
+                        resolve(result);
+                    };
+                    request.onerror = reject;
+                });
+            } catch (error) {
+                console.error('Failed to get file data:', error);
+                return null;
+            }
+        }
+
+        async function deleteFileData(fileType) {
+            try {
+                const db = await openDatabase();
+                const transaction = db.transaction(['files'], 'readwrite');
+                const store = transaction.objectStore('files');
+                
+                store.delete(fileType);
+                
+                await new Promise((resolve, reject) => {
+                    transaction.oncomplete = resolve;
+                    transaction.onerror = reject;
+                });
+                
+                console.log(`File data deleted for ${fileType}`);
+            } catch (error) {
+                console.error('Failed to delete file data:', error);
+            }
+        }
+
+        async function initializeData() {
+            orderData = {};
+            skuData = {};
+            labelData = {};
+            scanResults = {};
+            orderFileData = null;
+            skuFileData = null;
+            labelFileData = null;
+
+            try {
+                const savedScanResults = localStorage.getItem('offlineScan_scanResults');
+                if (savedScanResults) {
+                    scanResults = JSON.parse(savedScanResults);
+                }
+            } catch (error) {
+                console.error('Failed to load scan results from localStorage:', error);
+            }
+
+            try {
+                localStorage.removeItem('offlineScan_orderData');
+                localStorage.removeItem('offlineScan_skuData');
+                localStorage.removeItem('offlineScan_labelData');
+            } catch (error) {
+                console.error('Failed to clear localStorage data:', error);
+            }
+
+            // 显示加载提示
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const loadingProgress = document.getElementById('loadingProgress');
+            loadingOverlay.style.display = 'flex';
+            loadingProgress.textContent = 'Preparing to load files...';
+
+            try {
+                // 并行加载三个文件
+                await Promise.all([
+                    loadOrderFile(),
+                    loadSkuFile(),
+                    loadLabelFile()
+                ]);
+                
+                // 所有文件加载完成
+                loadingProgress.textContent = 'All files loaded successfully!';
+                // 短暂延迟后隐藏加载提示
+                setTimeout(() => {
+                    loadingOverlay.style.display = 'none';
+                }, 500);
+            } catch (error) {
+                console.error('Failed to load file data:', error);
+                orderStatus.textContent = translations[currentLang].upload.waiting;
+                orderStatus.className = 'upload-status';
+                skuStatus.textContent = translations[currentLang].upload.waiting;
+                skuStatus.className = 'upload-status';
+                labelStatus.textContent = translations[currentLang].upload.waiting;
+                labelStatus.className = 'upload-status';
+                
+                loadingProgress.textContent = 'Error loading files. Please try again.';
+                setTimeout(() => {
+                    loadingOverlay.style.display = 'none';
+                }, 1500);
+            }
+
+            checkFilesReady();
+
+            if (Object.keys(orderData).length > 0 && Object.keys(skuData).length > 0) {
+                orderInput.disabled = false;
+                barcodeInput.disabled = true;
+                orderInput.focus();
+            } else {
+                orderInput.disabled = true;
+                barcodeInput.disabled = true;
+            }
+        }
+
+        async function loadOrderFile() {
+            const orderFile = await getFileData('order');
+            if (orderFile && orderFile.fileData) {
+                console.log('Found order file in IndexedDB, loading...');
+                const workbook = XLSX.read(orderFile.fileData, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                processOrderData(jsonData);
+                const orderCount = Object.keys(orderData).length;
+                orderStatus.textContent = `Loaded from cache, ${orderCount} ${translations[currentLang].upload.ordersLoaded}`;
+                orderStatus.className = 'upload-status success';
+                orderFileData = {
+                    fileName: orderFile.fileName,
+                    fileData: orderFile.fileData,
+                    workbook: workbook
+                };
+            } else {
+                orderStatus.textContent = translations[currentLang].upload.waiting;
+                orderStatus.className = 'upload-status';
+            }
+        }
+
+        async function loadSkuFile() {
+            const skuFile = await getFileData('sku');
+            if (skuFile && skuFile.fileData) {
+                console.log('Found SKU file in IndexedDB, loading...');
+                const workbook = XLSX.read(skuFile.fileData, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                processSkuData(jsonData);
+                const skuCount = Object.keys(skuData).length;
+                skuStatus.textContent = `Loaded from cache, ${skuCount} ${translations[currentLang].upload.skusLoaded}`;
+                skuStatus.className = 'upload-status success';
+                skuFileData = {
+                    fileName: skuFile.fileName,
+                    fileData: skuFile.fileData,
+                    workbook: workbook
+                };
+            } else {
+                skuStatus.textContent = translations[currentLang].upload.waiting;
+                skuStatus.className = 'upload-status';
+            }
+        }
+
+        async function loadLabelFile() {
+            const labelFile = await getFileData('label');
+            if (labelFile && labelFile.fileData) {
+                console.log('Found label file in IndexedDB, loading...');
+                const workbook = XLSX.read(labelFile.fileData, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                processLabelData(jsonData);
+                const labelCount = Object.keys(labelData).length;
+                labelStatus.textContent = `Loaded from cache, ${labelCount} labels loaded`;
+                labelStatus.className = 'upload-status success';
+                labelFileData = {
+                    fileName: labelFile.fileName,
+                    fileData: labelFile.fileData,
+                    workbook: workbook
+                };
+            } else {
+                labelStatus.textContent = translations[currentLang].upload.waiting;
+                labelStatus.className = 'upload-status';
+            }
+        }
+
+
+
+        // 上传订单文件
+        orderExcelInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    try {
+                        orderData = {};
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                        
+                        processOrderData(jsonData);
+                        
+                        orderFileData = {
+                            fileName: file.name,
+                            fileData: data,
+                            workbook: workbook
+                        };
+                        
+                        await storeFileData('order', file.name, data);
+                        
+                        const orderCount = Object.keys(orderData).length;
+                        orderStatus.textContent = `${translations[currentLang].upload.success}, ${orderCount} ${translations[currentLang].upload.ordersLoaded}`;
+                        orderStatus.className = 'upload-status success';
+                        showAlert(translations[currentLang].alerts.orderFileUploaded, 'success');
+                        checkFilesReady();
+                    } catch (error) {
+                        orderStatus.textContent = 'Upload failed: ' + error.message;
+                        orderStatus.className = 'upload-status error';
+                        showAlert('Order file upload failed: ' + error.message, 'error');
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        });
+
+        // 上传SKU文件
+        skuExcelInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    try {
+                        skuData = {};
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                        
+                        processSkuData(jsonData);
+                        
+                        skuFileData = {
+                            fileName: file.name,
+                            fileData: data,
+                            workbook: workbook
+                        };
+                        
+                        await storeFileData('sku', file.name, data);
+                        
+                        const skuCount = Object.keys(skuData).length;
+                        skuStatus.textContent = `${translations[currentLang].upload.success}, ${skuCount} ${translations[currentLang].upload.skusLoaded}`;
+                        skuStatus.className = 'upload-status success';
+                        showAlert(translations[currentLang].alerts.skuFileUploaded, 'success');
+                        checkFilesReady();
+                    } catch (error) {
+                        skuStatus.textContent = 'Upload failed: ' + error.message;
+                        skuStatus.className = 'upload-status error';
+                        showAlert('SKU file upload failed: ' + error.message, 'error');
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        });
+
+        // 上传标签文件
+        labelExcelInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    try {
+                        labelData = {};
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                        
+                        processLabelData(jsonData);
+                        
+                        labelFileData = {
+                            fileName: file.name,
+                            fileData: data,
+                            workbook: workbook
+                        };
+                        
+                        await storeFileData('label', file.name, data);
+                        
+                        const labelCount = Object.keys(labelData).length;
+                        labelStatus.textContent = `Upload successful, ${labelCount} labels loaded`;
+                        labelStatus.className = 'upload-status success';
+                        showAlert(`Label file uploaded successfully, ${labelCount} labels loaded`, 'success');
+                    } catch (error) {
+                        labelStatus.textContent = 'Upload failed: ' + error.message;
+                        labelStatus.className = 'upload-status error';
+                        showAlert('Label file upload failed: ' + error.message, 'error');
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        });
+
+        // 处理订单数据
+        function processOrderData(data) {
+            if (data.length < 2) return;
+            
+            const headers = data[0];
+            
+            const deliveryModeIndex = headers.findIndex(h => h && h.toString().trim() === 'Delivery Mode');
+            const orderIdIndex = headers.findIndex(h => h && h.toString().trim() === 'Order ID');
+            const orderDateIndex = headers.findIndex(h => h && h.toString().trim() === 'Order Date');
+            const orderTimeIndex = headers.findIndex(h => h && h.toString().trim() === 'Order Time');
+            const pickupDateIndex = headers.findIndex(h => h && h.toString().trim() === 'Pickup Date');
+            const pickupTimeIndex = headers.findIndex(h => h && h.toString().trim() === 'Pickup Time');
+            const skuIdIndex = headers.findIndex(h => h && h.toString().trim() === 'SKU ID');
+            const merchantProductIdIndex = headers.findIndex(h => h && h.toString().trim() === 'Merchant Product ID');
+            const skuNameZhIndex = headers.findIndex(h => h && h.toString().trim() === 'SKU Name (Chinese)');
+            const totalQtyIndex = headers.findIndex(h => h && h.toString().trim() === 'Total Qty');
+            const waybillIndex = headers.findIndex(h => h && h.toString().trim() === 'Waybill');
+            const deliveryDateIndex = headers.findIndex(h => h && h.toString().trim() === 'Delivery Date');
+            
+            const ordersByWaybill = {};
+            
+            for (let i = 1; i < data.length; i++) {
+                const row = data[i];
+                if (!row || row.length === 0) continue;
+                
+                const waybill = row[waybillIndex] ? row[waybillIndex].toString().trim() : '';
+                if (!waybill) continue;
+                
+                if (!ordersByWaybill[waybill]) {
+                    ordersByWaybill[waybill] = {
+                        waybill: waybill,
+                        orderId: orderIdIndex !== -1 && row[orderIdIndex] ? row[orderIdIndex].toString().trim() : '',
+                        shippingMethod: deliveryModeIndex !== -1 && row[deliveryModeIndex] ? row[deliveryModeIndex].toString().trim() : '',
+                        orderDate: orderDateIndex !== -1 && row[orderDateIndex] ? row[orderDateIndex].toString().trim() : '',
+                        orderTime: orderTimeIndex !== -1 && row[orderTimeIndex] ? row[orderTimeIndex].toString().trim() : '',
+                        pickupDate: pickupDateIndex !== -1 && row[pickupDateIndex] ? row[pickupDateIndex].toString().trim() : '',
+                        pickupTime: pickupTimeIndex !== -1 && row[pickupTimeIndex] ? row[pickupTimeIndex].toString().trim() : '',
+                        deliveryDate: deliveryDateIndex !== -1 && row[deliveryDateIndex] ? row[deliveryDateIndex].toString().trim() : '',
+                        products: [],
+                        scanTime: null,
+                        status: 'pending',
+                        scanProgress: 0
+                    };
+                }
+                
+                const product = {
+                    productId: merchantProductIdIndex !== -1 && row[merchantProductIdIndex] ? row[merchantProductIdIndex].toString().trim() : '',
+                    skuId: skuIdIndex !== -1 && row[skuIdIndex] ? row[skuIdIndex].toString().trim() : '',
+                    skuNameZh: skuNameZhIndex !== -1 && row[skuNameZhIndex] ? row[skuNameZhIndex].toString().trim() : '',
+                    quantity: totalQtyIndex !== -1 && row[totalQtyIndex] ? parseInt(row[totalQtyIndex]) : 0,
+                    scanQty: 0,
+                    barcode: ''
+                };
+                
+                ordersByWaybill[waybill].products.push(product);
+            }
+            
+            for (const waybill in ordersByWaybill) {
+                orderData[waybill] = ordersByWaybill[waybill];
+            }
+        }
+
+        // 处理SKU数据
+        function processSkuData(data) {
+            if (data.length < 2) return;
+            
+            const headers = data[0];
+            
+            const baseSkuIndex = headers.findIndex(h => h && h.toString().toLowerCase().includes('base') && h.toString().toLowerCase().includes('sku'));
+            const nameIndex = headers.findIndex(h => h && h.toString().toLowerCase().includes('name'));
+            const barcodeIndex = headers.findIndex(h => h && h.toString().toLowerCase().includes('barcode'));
+            const bomIndex = headers.findIndex(h => h && h.toString().toLowerCase().includes('bom'));
+            const childSkuIndex = headers.findIndex(h => h && h.toString().toLowerCase().includes('child') && h.toString().toLowerCase().includes('sku'));
+            const childNameIndex = headers.findIndex(h => h && h.toString().toLowerCase().includes('child') && h.toString().toLowerCase().includes('name'));
+            const comboQtyIndex = headers.findIndex(h => h && h.toString().toLowerCase().includes('combo') && h.toString().toLowerCase().includes('qty'));
+            const childBarcodeIndex = headers.findIndex(h => h && h.toString().toLowerCase().includes('child') && h.toString().toLowerCase().includes('barcode'));
+            
+            const backupChildSkuIndex = 4; // E列
+            const backupChildNameIndex = 5; // F列
+            const backupComboQtyIndex = 6; // G列
+            const backupChildBarcodeIndex = 7; // H列
+            
+            skuData = {};
+            
+            for (let i = 1; i < data.length; i++) {
+                const row = data[i];
+                if (!row || row.length === 0) continue;
+                
+                const baseSku = row[baseSkuIndex] ? row[baseSkuIndex].toString().trim() : '';
+                if (!baseSku) continue;
+                
+                const isBom = bomIndex !== -1 && row[bomIndex] ? row[bomIndex].toString().trim().toLowerCase() === 'yes' : false;
+                
+                const actualChildSkuIndex = childSkuIndex !== -1 ? childSkuIndex : backupChildSkuIndex;
+                const actualChildNameIndex = childNameIndex !== -1 ? childNameIndex : backupChildNameIndex;
+                const actualComboQtyIndex = comboQtyIndex !== -1 ? comboQtyIndex : backupComboQtyIndex;
+                const actualChildBarcodeIndex = childBarcodeIndex !== -1 ? childBarcodeIndex : backupChildBarcodeIndex;
+                
+                const skuItem = {
+                    skuId: baseSku,
+                    name: row[nameIndex] ? row[nameIndex].toString().trim() : '',
+                    barcode: row[barcodeIndex] ? row[barcodeIndex].toString().trim() : '',
+                    isBom: isBom,
+                    baseSku: baseSku,
+                    childSku: row[actualChildSkuIndex] ? row[actualChildSkuIndex].toString().trim() : '',
+                    childName: row[actualChildNameIndex] ? row[actualChildNameIndex].toString().trim() : '',
+                    comboQty: actualComboQtyIndex !== -1 && row[actualComboQtyIndex] ? parseInt(row[actualComboQtyIndex]) : 1,
+                    childBarcode: row[actualChildBarcodeIndex] ? row[actualChildBarcodeIndex].toString().trim() : ''
+                };
+                
+                if (!skuData[baseSku]) {
+                    skuData[baseSku] = [];
+                }
+                skuData[baseSku].push(skuItem);
+            }
+        }
+
+        // 生成Excel列名
+        function generateExcelColumns() {
+            const columns = [];
+            for (let i = 0; i < 26; i++) {
+                columns.push(String.fromCharCode(65 + i));
+            }
+            for (let i = 0; i < 26; i++) {
+                for (let j = 0; j < 26; j++) {
+                    columns.push(`${String.fromCharCode(65 + i)}${String.fromCharCode(65 + j)}`);
+                }
+            }
+            return columns;
+        }
+
+        // 与后端相同的列映射
+        const COLUMN_MAPPING = {
+            "health_food": ["A", "B", "I", "AU", "X", "AS", "T", "AV", "AH", "AJ", "AK", "AL", "AM", "AN", "AO", "AP", "AQ", "G"],
+            "food_label": ["A", "B", "AG", "AJ", "AK", "AL", "AM", "AN", "AO", "AP", "AQ", "AE", "X", "I", "T", "G"],
+            "special_label": ["A", "B", "AW", "AS", "AU", "I", "AY", "G"],
+            "ordinary_label": ["AS", "G"]
+        };
+
+        // 处理标签数据
+        function processLabelData(data) {
+            if (data.length < 2) return;
+            
+            const excelColumns = generateExcelColumns();
+            
+            for (let i = 1; i < data.length; i++) {
+                const row = data[i];
+                if (!row || row.length === 0) continue;
+                
+                const barcode = row[0] ? row[0].toString().trim() : '';
+                if (!barcode) continue;
+                
+                let labelType = '';
+                const gIndex = excelColumns.indexOf('G');
+                if (gIndex !== -1 && row[gIndex]) {
+                    labelType = row[gIndex].toString().trim().toLowerCase();
+                }
+                
+                const columnType = {
+                    "保健食品": "health_food",
+                    "food label": "food_label",
+                    "蟲蟲label": "special_label"
+                }[labelType] || "ordinary_label";
+                
+                const selectedColumns = COLUMN_MAPPING[columnType] || [];
+                
+                const productData = {};
+                row.forEach((value, index) => {
+                    const columnName = excelColumns[index];
+                    if (columnName && selectedColumns.includes(columnName)) {
+                        productData[columnName] = value;
+                    }
+                });
+                
+                if (!productData['G'] && gIndex !== -1 && row[gIndex]) {
+                    productData['G'] = row[gIndex];
+                }
+                
+                labelData[barcode] = productData;
+            }
+        }
+
+        // 检查文件是否都上传完成
+        function checkFilesReady() {
+            const hasOrderData = Object.keys(orderData).length > 0;
+            const hasSkuData = Object.keys(skuData).length > 0;
+            
+            if (hasOrderData && hasSkuData) {
+                showAlert(translations[currentLang].alerts.filesReady, 'success');
+                orderInput.disabled = false;
+                barcodeInput.disabled = true;
+                orderInput.focus();
+                updateStats();
+            } else {
+                orderInput.disabled = true;
+                barcodeInput.disabled = true;
+            }
+        }
+
+        // 显示提示信息
+        function showAlert(message, type) {
+            infoAlert.textContent = message;
+            infoAlert.className = `alert alert-${type} show`;
+            
+            setTimeout(() => {
+                infoAlert.classList.add('hide');
+                setTimeout(() => {
+                    infoAlert.classList.remove('show', 'hide');
+                }, 300);
+            }, 5000);
+        }
+
+        // 扫描运单号
+        orderInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                const orderId = this.value.trim();
+                if (orderId) {
+                    loadOrder(orderId);
+                }
+            }
+        });
+
+        // 格式化日期时间
+        function formatDateTime(dateStr, timeStr) {
+            if (!dateStr) return '';
+            
+            let formattedDate = '';
+            let date;
+            
+            // 检查是否是真正的数字（只包含数字和可能的小数点）
+            const isNumeric = /^\d+(\.\d+)?$/.test(dateStr);
+            
+            // 尝试解析Excel日期序列号（只有当它是真正的数字时）
+            if (isNumeric) {
+                const numDate = parseFloat(dateStr);
+                if (!isNaN(numDate) && numDate > 0) {
+                    // Excel日期序列号转换
+                    const excelEpoch = new Date(1899, 11, 30);
+                    const milliseconds = (numDate - 1) * 24 * 60 * 60 * 1000;
+                    date = new Date(excelEpoch.getTime() + milliseconds);
+                    // 修复Excel日期序列号可能导致的年份错误
+                    if (date.getFullYear() < 1970) {
+                        date = new Date(dateStr);
+                    }
+                }
+            } else if (dateStr.includes('/')) {
+                // 处理如 "21/1/2026" 这样的格式
+                const dateParts = dateStr.split('/');
+                if (dateParts.length === 3) {
+                    const day = parseInt(dateParts[0]);
+                    const month = parseInt(dateParts[1]) - 1;
+                    const year = parseInt(dateParts[2]);
+                    date = new Date(year, month, day);
+                } else {
+                    date = new Date(dateStr);
+                }
+            } else if (dateStr.includes('-')) {
+                // 处理如 "2026-01-21" 这样的格式
+                date = new Date(dateStr);
+            } else {
+                // 尝试其他格式
+                date = new Date(dateStr);
+            }
+            
+            if (isNaN(date.getTime())) {
+                // 如果日期解析失败，尝试另一种方法
+                if (dateStr.includes('/')) {
+                    const dateParts = dateStr.split('/');
+                    if (dateParts.length === 3) {
+                        const day = parseInt(dateParts[0]);
+                        const month = parseInt(dateParts[1]) - 1;
+                        const year = parseInt(dateParts[2]);
+                        date = new Date(year, month, day);
+                    }
+                }
+            }
+            
+            if (isNaN(date.getTime())) {
+                // 如果日期解析仍然失败，直接返回原始值
+                if (timeStr) {
+                    return `${dateStr} ${timeStr}`;
+                }
+                return dateStr;
+            }
+            
+            // 格式化为 yyyy-MM-dd
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            formattedDate = `${year}-${month}-${day}`;
+            
+            // 处理时间部分
+            if (timeStr) {
+                // 确保时间格式为 HH:mm:ss
+                let formattedTime = timeStr;
+                if (timeStr.includes(':')) {
+                    const timeParts = timeStr.split(':');
+                    if (timeParts.length >= 2) {
+                        const hours = String(timeParts[0]).padStart(2, '0');
+                        const minutes = String(timeParts[1]).padStart(2, '0');
+                        const seconds = timeParts.length >= 3 ? String(timeParts[2]).padStart(2, '0') : '00';
+                        formattedTime = `${hours}:${minutes}:${seconds}`;
+                    }
+                }
+                return `${formattedDate} ${formattedTime}`;
+            }
+            
+            return formattedDate;
+        }
+
+        // 格式化扫描时间
+        function formatScanTime(scanTime) {
+            if (!scanTime) return '';
+            
+            if (scanTime instanceof Date) {
+                scanTime = scanTime.toISOString();
+            }
+            
+            let date;
+            
+            if (scanTime.includes('T')) {
+                date = new Date(scanTime);
+            } 
+            else if (scanTime.includes(',')) {
+                date = new Date(scanTime);
+            } 
+            else {
+                date = new Date(scanTime);
+            }
+            
+            if (isNaN(date.getTime())) {
+                return scanTime;
+            }
+            
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+            
+            return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        }
+
+        // 加载订单
+        function loadOrder(waybill) {
+            currentOrderId = waybill;
+            
+            if (scanResults[waybill]) {
+                const order = scanResults[waybill];
+                if (order.status === 'completed' || order.status === 'error') {
+                    const errorMessage = currentLang === 'en' ? 
+                        'Order already marked' : 
+                        '订单已标记';
+                    showAlert(errorMessage, 'error');
+                    orderInput.value = '';
+                    orderInput.focus();
+                    return;
+                }
+            }
+            
+            if (!orderData[waybill]) {
+                showAlert(translations[currentLang].alerts.orderDoesNotExist.replace('{waybill}', waybill), 'error');
+                return;
+            }
+            
+            currentOrder = JSON.parse(JSON.stringify(orderData[waybill]));
+            
+            currentOrder.products.forEach(product => {
+                if (product.productId && skuData[product.productId] && skuData[product.productId].length > 0) {
+                    product.barcode = skuData[product.productId][0].barcode;
+                } else if (!product.barcode && product.productId) {
+                    product.barcode = product.productId;
+                }
+                
+                if (product.productId && skuData[product.productId] && skuData[product.productId].length > 0) {
+                    const skuItems = skuData[product.productId];
+                    product.isBom = skuItems.some(item => item.isBom);
+                    
+                    if (product.isBom) {
+                        product.children = [];
+                        
+                        skuItems.forEach(skuItem => {
+                            if (skuItem.childSku) {
+                                product.children.push({
+                                    skuId: skuItem.childSku,
+                                    name: skuItem.childName,
+                                    comboQty: skuItem.comboQty,
+                                    barcode: skuItem.childBarcode,
+                                    scanQty: 0
+                                });
+                            }
+                        });
+                    } else {
+                        product.isBom = false;
+                        product.children = [];
+                    }
+                } else {
+                    product.isBom = false;
+                    product.children = [];
+                }
+            });
+            
+            let contentHtml = '';
+            contentHtml += `<p><strong data-i18n="order.waybill">:</strong> ${currentOrder.waybill}</p>`;
+            if (currentOrder.orderId) {
+                contentHtml += `<p><strong data-i18n="order.orderId">:</strong> ${currentOrder.orderId}</p>`;
+            }
+            
+            const orderDateTime = formatDateTime(currentOrder.orderDate, currentOrder.orderTime);
+            contentHtml += `<p><strong data-i18n="order.orderTime">:</strong> ${orderDateTime || ''}</p>`;
+            
+            const pickupDateTime = formatDateTime(currentOrder.pickupDate, currentOrder.pickupTime);
+            contentHtml += `<p><strong data-i18n="order.pickupTime">:</strong> ${pickupDateTime || ''}</p>`;
+            
+            const deliveryDateTime = formatDateTime(currentOrder.deliveryDate);
+            contentHtml += `<p><strong data-i18n="order.deliveryTime">:</strong> ${deliveryDateTime || ''}</p>`;
+            
+            contentHtml += `<p><strong data-i18n="order.productCount">:</strong> ${currentOrder.products.length}</p>`;
+            
+            document.getElementById('orderContent').innerHTML = contentHtml;
+            
+            updatePlaceholders();
+            renderProductTable();
+            
+            orderInput.value = waybill;
+            orderInput.disabled = true;
+            barcodeInput.disabled = false;
+            barcodeInput.focus();
+            
+            markErrorBtn.disabled = false;
+        }
+
+        // 渲染商品表格
+        function renderProductTable() {
+            productTableBody.innerHTML = '';
+            
+            if (!currentOrder || !currentOrder.products) {
+                productTableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;"><span data-i18n="productTable.noData"></span></td></tr>`;
+                return;
+            }
+            
+            currentOrder.products.forEach((product, index) => {
+                // 母商品行
+                const parentRow = document.createElement('tr');
+                parentRow.className = 'product-row';
+                parentRow.dataset.index = index;
+                
+                parentRow.innerHTML = `
+                    <td><strong>${product.productId}</strong></td>
+                    <td>${product.skuNameZh}</td>
+                    <td>${product.barcode}</td>
+                    <td><strong>${product.quantity}</strong></td>
+                    <td>${product.isBom ? '' : '<input type="number" class="quantity-input" min="0" value="' + (product.scanQty || 0) + '" onchange="updateScanQty(' + index + ', this.value)">'}</td>
+                `;
+                
+                productTableBody.appendChild(parentRow);
+                
+                // 子商品行
+                if (product.isBom && product.children && product.children.length > 0) {
+                    product.children.forEach((child, childIndex) => {
+                        const childRow = document.createElement('tr');
+                        childRow.className = 'product-row child-row';
+                        childRow.dataset.parentIndex = index;
+                        childRow.dataset.childIndex = childIndex;
+                        childRow.style.borderLeft = '3px solid #667eea';
+                        
+                        const childQuantity = product.quantity * child.comboQty;
+                        
+                        childRow.innerHTML = `
+                            <td style="padding-left: 30px; color: #666;">${child.skuId}</td>
+                            <td style="padding-left: 30px; color: #666;">${child.name}</td>
+                            <td style="color: #666;">${child.barcode}</td>
+                            <td style="color: #666;"><strong>${childQuantity}</strong></td>
+                            <td><input type="number" class="quantity-input" min="0" value="${child.scanQty || 0}" onchange="updateChildScanQty(${index}, ${childIndex}, this.value)"></td>
+                        `;
+                        childRow.style.height = '40px';
+                        childRow.style.padding = '4px 8px';
+                        
+                        productTableBody.appendChild(childRow);
+                    });
+                }
+            });
+        }
+        
+
+        
+
+
+        // 更新扫描数量
+        function updateScanQty(index, value) {
+            if (!currentOrder || !currentOrder.products[index]) return;
+            
+            const qty = parseInt(value);
+            if (isNaN(qty) || qty < 0) return;
+            
+            currentOrder.products[index].scanQty = qty;
+            
+            updateOrderProgress();
+            renderProductTable();
+            
+            // 检查是否所有商品都已完成
+            checkAllProductsCompleted();
+        }
+
+        // 更新子商品扫描数量
+        function updateChildScanQty(parentIndex, childIndex, value) {
+            if (!currentOrder || !currentOrder.products[parentIndex]) return;
+            
+            const product = currentOrder.products[parentIndex];
+            if (!product.children || !product.children[childIndex]) return;
+            
+            const qty = parseInt(value);
+            if (isNaN(qty) || qty < 0) return;
+            
+            product.children[childIndex].scanQty = qty;
+            
+            updateOrderProgress();
+            renderProductTable();
+            
+            // 检查是否所有商品都已完成
+            checkAllProductsCompleted();
+        }
+
+        // 更新订单进度
+        function updateOrderProgress() {
+            if (!currentOrder || !currentOrder.products) return;
+            
+            let totalItems = 0;
+            let completedItems = 0;
+            
+            currentOrder.products.forEach(product => {
+                if (product.isBom && product.children) {
+                    // 组合商品，只计算子商品
+                    product.children.forEach(child => {
+                        const childQuantity = product.quantity * child.comboQty;
+                        totalItems++;
+                        if ((child.scanQty || 0) >= childQuantity) {
+                            completedItems++;
+                        }
+                    });
+                } else {
+                    // 非组合商品
+                    totalItems++;
+                    if (product.scanQty >= product.quantity) {
+                        completedItems++;
+                    }
+                }
+            });
+            
+            currentOrder.scanProgress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+        }
+
+        // 检查是否所有商品都已完成
+        function checkAllProductsCompleted() {
+            if (!currentOrder || !currentOrder.products) return;
+            
+            let allCompleted = true;
+            
+            currentOrder.products.forEach(product => {
+                if (product.isBom && product.children) {
+                    // 组合商品，检查所有子商品
+                    const childCompleted = product.children.every(child => {
+                        const childQuantity = product.quantity * child.comboQty;
+                        return (child.scanQty || 0) >= childQuantity;
+                    });
+                    if (!childCompleted) {
+                        allCompleted = false;
+                    }
+                } else {
+                    // 非组合商品
+                    if (product.scanQty < product.quantity) {
+                        allCompleted = false;
+                    }
+                }
+            });
+            
+            if (allCompleted) {
+                completeOrder();
+            }
+        }
+
+        // 扫描条码
+        barcodeInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                const barcode = this.value.trim();
+                if (barcode) {
+                    scanBarcode(barcode);
+                    
+                    // 清空输入框并继续聚焦
+                    this.value = '';
+                    this.focus();
+                }
+            }
+        });
+
+        // 扫描条码处理
+        function scanBarcode(barcode) {
+            if (!currentOrder || !currentOrder.products) {
+                showAlert(translations[currentLang].alerts.scanWaybillFirst, 'error');
+                return;
+            }
+            
+            let matched = false;
+            let matchedProduct = null;
+            let matchedIndex = -1;
+            let isChild = false;
+            let childInfo = null;
+            
+            // 遍历所有母商品
+            for (let i = 0; i < currentOrder.products.length; i++) {
+                const product = currentOrder.products[i];
+                
+                // 检查子商品
+                if (product.isBom && product.children) {
+                    for (let j = 0; j < product.children.length; j++) {
+                        const child = product.children[j];
+                        if (child.barcode === barcode) {
+                            const childQuantity = product.quantity * child.comboQty;
+                            if ((child.scanQty || 0) >= childQuantity) {
+                                showAlert(translations[currentLang].alerts.productSufficient.replace('{productId}', child.skuId), 'info');
+                            } else {
+                                child.scanQty = (child.scanQty || 0) + 1;
+                                matchedProduct = child;
+                                matchedIndex = i;
+                                isChild = true;
+                                childInfo = { parentIndex: i, childIndex: j };
+                                matched = true;
+                            }
+                            break;
+                        }
+                    }
+                } else if (!product.isBom) {
+                    // 非组合商品可以直接扫描
+                    if (product.barcode === barcode) {
+                        if (product.scanQty >= product.quantity) {
+                            showAlert(translations[currentLang].alerts.productSufficient.replace('{productId}', product.productId), 'info');
+                        } else {
+                            product.scanQty++;
+                            matchedProduct = product;
+                            matchedIndex = i;
+                            matched = true;
+                        }
+                        break;
+                    }
+                }
+                
+                if (matched) break;
+            }
+            
+            if (matched) {
+                updateOrderProgress();
+                renderProductTable();
+                
+                if (isChild && childInfo) {
+                    // 高亮子商品行
+                    const rows = productTableBody.querySelectorAll('.product-row');
+                    let rowIndex = 0;
+                    for (let i = 0; i < currentOrder.products.length; i++) {
+                        rowIndex++;
+                        if (i === childInfo.parentIndex) {
+                            // 找到母商品行后，再找到对应的子商品行
+                            const childRows = document.querySelectorAll(`.child-row[data-parentIndex="${childInfo.parentIndex}"]`);
+                            if (childRows[childInfo.childIndex]) {
+                                childRows[childInfo.childIndex].classList.add('highlight');
+                                setTimeout(() => {
+                                    childRows[childInfo.childIndex].classList.remove('highlight');
+                                }, 1000);
+                            }
+                            break;
+                        }
+                        // 如果是组合商品，跳过子商品行
+                        const product = currentOrder.products[i];
+                        if (product.isBom && product.children) {
+                            rowIndex += product.children.length;
+                        }
+                    }
+                } else if (matchedIndex !== -1) {
+                    highlightRow(matchedIndex);
+                }
+                
+                showAlert(translations[currentLang].alerts.scanSuccess.replace('{productId}', matchedProduct.productId || matchedProduct.skuId), 'success');
+                
+                // 检查是否需要自动打印标签
+                if (autoPrintToggle.checked && labelData[barcode]) {
+                    printLabel(barcode);
+                }
+                
+                checkAllProductsCompleted();
+            } else {
+                showAlert(translations[currentLang].alerts.noMatchingProduct.replace('{barcode}', barcode), 'error');
+                
+                // 即使没有匹配的商品，也尝试打印标签（如果开启了自动打印）
+                if (autoPrintToggle.checked && labelData[barcode]) {
+                    printLabel(barcode);
+                }
+            }
+        }
+
+        // 高亮行
+        function highlightRow(index) {
+            const rows = productTableBody.querySelectorAll('.product-row');
+            rows.forEach(row => row.classList.remove('highlight'));
+            
+            if (rows[index]) {
+                rows[index].classList.add('highlight');
+                setTimeout(() => {
+                    rows[index].classList.remove('highlight');
+                }, 1000);
+            }
+        }
+
+        // 完成订单
+        function completeOrder() {
+            if (!currentOrder) return;
+            
+            currentOrder.scanTime = new Date().toLocaleString();
+            currentOrder.status = 'completed';
+            
+            scanResults[currentOrder.waybill] = {
+                ...currentOrder
+            };
+            
+            orderData[currentOrder.waybill] = {
+                ...currentOrder
+            };
+            
+            showAlert(translations[currentLang].alerts.scanComplete.replace('{waybill}', currentOrder.waybill), 'success');
+            
+            updateResultsTables();
+            updateStats();
+            
+            // 保存扫描结果到localStorage
+            try {
+                localStorage.setItem('offlineScan_scanResults', JSON.stringify(scanResults));
+            } catch (error) {
+                console.error('Failed to save scan results:', error);
+            }
+            
+            // 清空并重置
+            resetPage();
+        }
+
+        // 标记错误按钮
+        markErrorBtn.addEventListener('click', function() {
+            if (!currentOrder) return;
+            
+            if (confirm(translations[currentLang].confirm.markError)) {
+                currentOrder.status = 'error';
+                currentOrder.scanTime = new Date().toLocaleString();
+                
+                scanResults[currentOrder.waybill] = {
+                    ...currentOrder
+                };
+                
+                orderData[currentOrder.waybill] = {
+                    ...currentOrder
+                };
+                
+                showAlert(translations[currentLang].alerts.orderMarkedError.replace('{waybill}', currentOrder.waybill), 'error');
+                
+                updateResultsTables();
+                updateStats();
+                
+                // 保存扫描结果到localStorage
+                try {
+                    localStorage.setItem('offlineScan_scanResults', JSON.stringify(scanResults));
+                } catch (error) {
+                    console.error('Failed to save scan results:', error);
+                }
+                
+                resetPage();
+            }
+        });
+
+        // 重置页面
+        function resetPage() {
+            currentOrder = null;
+            currentOrderId = '';
+            
+            document.getElementById('orderContent').innerHTML = `<div class="empty-state"><span data-i18n="order.scanFirst"></span></div>`;
+            
+            orderInput.value = '';
+            orderInput.disabled = false;
+            barcodeInput.value = '';
+            barcodeInput.disabled = true;
+            markErrorBtn.disabled = true;
+            
+            productTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;"><span data-i18n="order.scanFirst"></span></td></tr>';
+            
+            orderInput.focus();
+        }
+
+        // 结果标签切换
+        const resultTabs = document.querySelectorAll('.results-tab');
+        resultTabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                resultTabs.forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.results-content').forEach(c => c.classList.remove('active'));
+                
+                this.classList.add('active');
+                const tabName = this.dataset.tab;
+                document.getElementById(tabName + 'Content').classList.add('active');
+                
+                updateResultsTables();
+            });
+        });
+
+        // 更新结果表格
+        function updateResultsTables() {
+            updateCorrectTable();
+            updateErrorTable();
+            updatePendingTable();
+        }
+
+        // 更新正确扫描表格
+        function updateCorrectTable() {
+            const tbody = document.querySelector('#correctTable tbody');
+            tbody.innerHTML = '';
+            
+            const correctOrders = Object.values(scanResults).filter(order => order.status === 'completed');
+            
+            if (correctOrders.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;"><span data-i18n="results.noSuccessful"></span></td></tr>`;
+                return;
+            }
+            
+            correctOrders.forEach(order => {
+                const row = document.createElement('tr');
+                const orderDateTime = formatDateTime(order.orderDate, order.orderTime);
+                // 格式化扫描时间
+                const formattedScanTime = formatScanTime(order.scanTime);
+                row.innerHTML = `
+                    <td><strong>${order.waybill}</strong></td>
+                    <td>${order.orderId || '-'}</td>
+                    <td>${orderDateTime || '-'}</td>
+                    <td>${formattedScanTime || '-'}</td>
+                    <td><span class="status-correct" data-i18n="results.completed"></span></td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            // 更新占位符
+            updatePlaceholders();
+        }
+
+        // 更新错误扫描表格
+        function updateErrorTable() {
+            const tbody = document.querySelector('#errorTable tbody');
+            tbody.innerHTML = '';
+            
+            const errorOrders = Object.values(scanResults).filter(order => order.status === 'error');
+            
+            if (errorOrders.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;"><span data-i18n="results.noError"></span></td></tr>`;
+                return;
+            }
+            
+            errorOrders.forEach(order => {
+                const row = document.createElement('tr');
+                const orderDateTime = formatDateTime(order.orderDate, order.orderTime);
+                // 格式化扫描时间
+                const formattedScanTime = formatScanTime(order.scanTime);
+                row.innerHTML = `
+                    <td><strong>${order.waybill}</strong></td>
+                    <td>${order.orderId || '-'}</td>
+                    <td>${orderDateTime || '-'}</td>
+                    <td>${formattedScanTime || '-'}</td>
+                    <td><span class="status-error" data-i18n="results.error"></span></td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            // 更新占位符
+            updatePlaceholders();
+        }
+
+        // 更新待处理表格
+        function updatePendingTable() {
+            const tbody = document.querySelector('#pendingTable tbody');
+            tbody.innerHTML = '';
+            
+            // 合并orderData和scanResults中的订单
+            const allOrders = {};
+            
+            // 首先添加orderData中的所有订单
+            for (const waybill in orderData) {
+                allOrders[waybill] = {
+                    ...orderData[waybill],
+                    status: 'pending',
+                    scanProgress: 0,
+                    scanTime: null
+                };
+            }
+            
+            // 然后用scanResults中的订单覆盖，保留已有的扫描进度
+            for (const waybill in scanResults) {
+                allOrders[waybill] = {
+                    ...allOrders[waybill],
+                    ...scanResults[waybill]
+                };
+            }
+            
+            // 包含当前正在处理的订单
+            if (currentOrder && currentOrder.waybill) {
+                allOrders[currentOrder.waybill] = currentOrder;
+            }
+            
+            // 过滤出待处理订单
+            const pendingOrders = Object.values(allOrders).filter(order => order.status !== 'completed' && order.status !== 'error');
+            
+            if (pendingOrders.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;"><span data-i18n="results.noPending"></span></td></tr>`;
+                return;
+            }
+            
+            pendingOrders.forEach(order => {
+                const row = document.createElement('tr');
+                const orderDateTime = formatDateTime(order.orderDate, order.orderTime);
+                row.innerHTML = `
+                    <td><strong>${order.waybill}</strong></td>
+                    <td>${order.orderId || '-'}</td>
+                    <td>${orderDateTime || '-'}</td>
+                    <td>${order.products.length}</td>
+                    <td><span class="status-pending" data-i18n="results.pending"></span></td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            // 更新占位符
+            updatePlaceholders();
+        }
+
+        // 更新统计数据
+        function updateStats() {
+            const correctCount = Object.values(scanResults).filter(order => order.status === 'completed').length;
+            const errorCount = Object.values(scanResults).filter(order => order.status === 'error').length;
+            
+            // 计算待处理订单数量（包括orderData中的所有订单，减去已完成和错误的订单）
+            const completedAndErrorCount = correctCount + errorCount;
+            const pendingCount = Object.keys(orderData).length - completedAndErrorCount;
+            
+            const totalCount = Object.keys(orderData).length;
+
+            correctCountEl.textContent = correctCount;
+            errorCountEl.textContent = errorCount;
+            pendingCountEl.textContent = pendingCount;
+            totalCountEl.textContent = totalCount;
+        }
+
+
+
+        // 打印标签
+        function printLabel(barcode) {
+            if (!labelData[barcode]) {
+                showAlert('Label not found for barcode: ' + barcode, 'error');
+                return;
+            }
+            
+            const label = labelData[barcode];
+            
+            // 创建打印窗口
+            const printWindow = window.open('', '_blank');
+            printWindow.document.open();
+            
+            let printContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Print Label</title>
+                    <style>
+                        * {
+                            margin: 0;
+                            padding: 0;
+                            box-sizing: border-box;
+                        }
+                        @page {
+                            size: 70mm 50mm;
+                            margin: 0;
+                        }
+                        body {
+                            margin: 0;
+                            padding: 0;
+                            font-family: 'Microsoft YaHei', Arial, sans-serif;
+                            width: 70mm;
+                            height: 50mm;
+                            overflow: hidden;
+                        }
+                        .label {
+                            width: 70mm;
+                            height: 50mm;
+                            border: 1px solid #000;
+                            background-color: white;
+                            position: relative;
+                            overflow: hidden;
+                        }
+                        .label-content {
+                            position: absolute;
+                            top: 0;
+                            left: 0;
+                            right: 0;
+                            bottom: 0;
+                            font-family: 'Microsoft YaHei', Arial, sans-serif;
+                            font-size: 12px;
+                            line-height: 1.2;
+                            transform: scale(0.333);
+                            transform-origin: top left;
+                            width: 300%;
+                            height: 300%;
+                        }
+                        @media print {
+                            body {
+                                padding: 0;
+                            }
+                            .label {
+                                box-shadow: none;
+                                border: 1px solid #000 !important;
+                                -webkit-print-color-adjust: exact;
+                                print-color-adjust: exact;
+                            }
+                            * {
+                                -webkit-print-color-adjust: exact;
+                                print-color-adjust: exact;
+                            }
+                        }
+                    </style>
+                </head>
+                <body>
+            `;
+            
+            // 添加标签
+            const labelType = getLabelType(label);
+            let labelHtml = '';
+            
+            switch (labelType) {
+                case 'food_label':
+                    labelHtml = renderFoodLabel(label);
+                    break;
+                case 'health_food':
+                    labelHtml = renderHealthFoodLabel(label);
+                    break;
+                case 'special_label':
+                    labelHtml = renderSpecialLabel(label);
+                    break;
+                case 'ordinary_label':
+                default:
+                    labelHtml = renderOrdinaryLabel(label);
+                    break;
+            }
+            
+            printContent += `<div class="label"><div class="label-content">${labelHtml}</div></div>`;
+            
+            printContent += `
+                </body>
+                </html>
+            `;
+            
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+            
+            // 等待窗口加载完成后打印
+            printWindow.onload = function() {
+                try {
+                    // 尝试打印
+                    printWindow.print();
+                    // 打印后关闭窗口
+                    setTimeout(() => {
+                        printWindow.close();
+                    }, 500);
+                } catch (error) {
+                    showAlert('Printing failed: No printer detected', 'error');
+                    printWindow.close();
+                }
+            };
+        }
+
+        // 获取标签类型
+        function getLabelType(labelData) {
+            const labelType = labelData['G'] ? labelData['G'].toString().trim().toLowerCase() : '';
+            const ingredients = labelData['I'] ? labelData['I'].toString().trim().toLowerCase() : '';
+            
+            if (labelType.includes('保健食品') || ingredients.includes('保健食品')) {
+                return 'health_food';
+            } else if (labelType.includes('food label')) {
+                return 'food_label';
+            } else if (labelType.includes('蟲蟲label') || labelType.includes('special label')) {
+                return 'special_label';
+            } else {
+                return 'ordinary_label';
+            }
+        }
+
+        // 渲染食品标签
+        function renderFoodLabel(data) {
+            let html = '';
+            
+            // 绘制分割线
+            html += `<div style="position: absolute; top: 30mm; left: 0; width: 210mm; height: 2px; background-color: black;"></div>`;
+            html += `<div style="position: absolute; top: 120mm; left: 0; width: 210mm; height: 2px; background-color: black;"></div>`;
+            html += `<div style="position: absolute; top: 30mm; left: 73.5mm; width: 2px; height: 90mm; background-color: black;"></div>`;
+            
+            // Top块 - 产品描述
+            html += `<div style="position: absolute; top: 10mm; left: 6mm; width: 200mm;">`;
+            // Barcode
+            if (data['A']) {
+                // 动态计算barcode的字体大小
+                let barcodeFontSize = 20;
+                if (data['A'].length > 20) {
+                    barcodeFontSize = 18;
+                }
+                html += `<div style="font-size: ${barcodeFontSize}px; margin-bottom: 2mm;">${data['A']}</div>`;
+            }
+            // 产品名称
+            if (data['B']) {
+                // 动态计算产品名称的字体大小
+                let productNameFontSize = 20;
+                if (data['B'].length > 50) {
+                    productNameFontSize = 18;
+                } else if (data['B'].length > 80) {
+                    productNameFontSize = 16;
+                } else if (data['B'].length > 120) {
+                    productNameFontSize = 14;
+                }
+                html += `<div style="font-size: ${productNameFontSize}px;">${data['B']}</div>`;
+            }
+            html += `</div>`;
+            
+            // 中间层 - 左侧
+            html += `<div style="position: absolute; top: 35mm; left: 6mm; font-size: 14px; font-weight: bold;">Nutrition Information</div>`;
+            
+            // 营养信息容器
+            html += `<div style="position: absolute; top: 45mm; left: 6mm; width: 60mm; font-size: 12px;">`;
+            
+            const servingSize = data['AG'] || '';
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 3mm;">`;
+            html += `<span>Serving Size:</span>`;
+            html += `<span>${servingSize}</span>`;
+            html += `</div>`;
+            
+            const energy = data['AJ'] || '';
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 3mm;">`;
+            html += `<span>Energy:</span>`;
+            html += `<span>${energy}</span>`;
+            html += `</div>`;
+            
+            const protein = data['AK'] || '';
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 3mm;">`;
+            html += `<span>Protein:</span>`;
+            html += `<span>${protein}</span>`;
+            html += `</div>`;
+            
+            const totalFat = data['AL'] || '';
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 3mm;">`;
+            html += `<span>Total fat:</span>`;
+            html += `<span>${totalFat}</span>`;
+            html += `</div>`;
+            
+            const satFat = data['AM'] || '';
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 3mm; padding-left: 5mm;">`;
+            html += `<span>- Saturated fat:</span>`;
+            html += `<span>${satFat}</span>`;
+            html += `</div>`;
+            
+            const transFat = data['AN'] || '';
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 3mm; padding-left: 5mm;">`;
+            html += `<span>- Trans fat:</span>`;
+            html += `<span>${transFat}</span>`;
+            html += `</div>`;
+            
+            const carbs = data['AO'] || '';
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 3mm;">`;
+            html += `<span>Carbohydrates:</span>`;
+            html += `<span>${carbs}</span>`;
+            html += `</div>`;
+            
+            const sugars = data['AP'] || '';
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 3mm; padding-left: 5mm;">`;
+            html += `<span>- Sugars:</span>`;
+            html += `<span>${sugars}</span>`;
+            html += `</div>`;
+            
+            const sodium = data['AQ'] || '';
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 3mm;">`;
+            html += `<span>Sodium:</span>`;
+            html += `<span>${sodium}</span>`;
+            html += `</div>`;
+            
+            const netContent = data['AE'] || '';
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 3mm;">`;
+            html += `<span>Net Content:</span>`;
+            html += `<span>${netContent}</span>`;
+            html += `</div>`;
+            
+            const country = data['X'] || '';
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 3mm;">`;
+            html += `<span>Country Of Origin:</span>`;
+            html += `<span>${country}</span>`;
+            html += `</div>`;
+            
+            html += `</div>`;
+            
+            // 中间层 - 右侧
+            if (data['I']) {
+                // 计算右侧容器的宽度和高度
+                const containerWidth = 120 * 3.7795275591;
+                const containerHeight = 80 * 3.7795275591;
+                
+                // 计算合适的字体大小
+                const fontSize = calculateFoodLabelRightFontSize(data['I'], containerWidth, containerHeight);
+                
+                html += `<div style="position: absolute; top: 35mm; left: 79.5mm; width: 120mm; height: 80mm; font-size: ${fontSize}px;">${data['I']}</div>`;
+            }
+            
+            // 下层内容 - 左侧
+            html += `<div style="position: absolute; top: 125mm; left: 6mm; width: 120mm; height: 20mm; font-size: 18px;">${data['T'] || ''}</div>`;
+            
+            // 下层内容 - 右下角
+            html += `<div style="position: absolute; top: 125mm; right: 6mm; text-align: right; font-size: 16px;">`;
+            html += `<div>Best before(Date Format):</div>`;
+            html += `<div>Show on package(見包裝)</div>`;
+            html += `<div>此日期前最佳(Format CHI)</div>`;
+            html += `</div>`;
+            
+            return html;
+        }
+
+        // 计算食品标签右侧文字的合适字体大小
+        function calculateFoodLabelRightFontSize(text, containerWidth, containerHeight, maxFontSize = 48, minFontSize = 12) {
+            // 创建临时元素用于测量
+            const tempElement = document.createElement('div');
+            tempElement.style.position = 'absolute';
+            tempElement.style.visibility = 'hidden';
+            tempElement.style.width = (containerWidth - 10) + 'px';
+            tempElement.style.boxSizing = 'border-box';
+            tempElement.textContent = text;
+            document.body.appendChild(tempElement);
+            
+            let fontSize = maxFontSize;
+            let height = 0;
+            
+            // 逐渐减小字体大小，直到文本高度适合容器
+            do {
+                tempElement.style.fontSize = fontSize + 'px';
+                height = tempElement.offsetHeight;
+                fontSize -= 1;
+            } while (height > (containerHeight - 10) && fontSize >= minFontSize);
+            
+            // 移除临时元素
+            document.body.removeChild(tempElement);
+            
+            // 确保返回的字体大小在合理范围内
+            return Math.max(minFontSize, fontSize + 1);
+        }
+
+        // 渲染保健食品标签
+        function renderHealthFoodLabel(data) {
+            let html = '';
+            
+            // 计算左右分割线位置（6:4比例）
+            const leftWidth = 210 * 0.6;
+            const rightWidth = 210 * 0.4;
+            
+            // 计算右侧上下分割线位置（3:7比例）
+            const rightTopHeight = 150 * 0.3;
+            
+            // 计算可展示区域高度
+            const leftAvailableHeight = 150 - 20;
+            const rightTopAvailableHeight = rightTopHeight - 20;
+            const rightBottomAvailableHeight = 150 - rightTopHeight - 10;
+            
+            // 绘制左侧分割线
+            html += `<div style="position: absolute; top: 0; left: ${leftWidth}mm; width: 2px; height: 150mm; background-color: black;"></div>`;
+            
+            // 绘制右侧中间分割线
+            html += `<div style="position: absolute; top: ${rightTopHeight}mm; left: ${leftWidth}mm; width: ${rightWidth}mm; height: 2px; background-color: black;"></div>`;
+            
+            // 左侧 - 产品信息
+            html += `<div style="position: absolute; top: 10mm; left: 6mm; width: ${leftWidth - 12}mm;">`;
+            
+            // 基础字体大小
+            const baseFontSize = 18;
+            const minFontSize = 12;
+            
+            // 计算Barcode和产品名称的字体大小
+            let barcodeFontSize = baseFontSize;
+            if (data['A'] && data['A'].length > 20) {
+                barcodeFontSize = Math.max(minFontSize, baseFontSize - 2);
+            }
+            
+            let productNameFontSize = baseFontSize;
+            if (data['B']) {
+                if (data['B'].length > 50) {
+                    productNameFontSize = Math.max(minFontSize, baseFontSize - 2);
+                } else if (data['B'].length > 80) {
+                    productNameFontSize = Math.max(minFontSize, baseFontSize - 4);
+                } else if (data['B'].length > 120) {
+                    productNameFontSize = Math.max(minFontSize, baseFontSize - 6);
+                }
+            }
+            
+            // 计算成分的字体大小
+            let ingredientFontSize = baseFontSize;
+            if (data['I']) {
+                // 计算成分容器的宽度
+                const ingredientContainerWidth = (leftWidth - 12) * 3.7795275591;
+                // 计算成分的可展示高度（预留足够空间给底部内容）
+                const ingredientAvailableHeight = 40 * 3.7795275591;
+                
+                const tempIngredientElement = document.createElement('div');
+                tempIngredientElement.style.position = 'absolute';
+                tempIngredientElement.style.visibility = 'hidden';
+                tempIngredientElement.style.width = ingredientContainerWidth + 'px';
+                tempIngredientElement.style.boxSizing = 'border-box';
+                tempIngredientElement.textContent = data['I'];
+                document.body.appendChild(tempIngredientElement);
+                
+                // 逐渐减小字体大小，直到文本高度适合容器
+                do {
+                    tempIngredientElement.style.fontSize = ingredientFontSize + 'px';
+                    const ingredientHeight = tempIngredientElement.offsetHeight;
+                    if (ingredientHeight <= ingredientAvailableHeight) break;
+                    ingredientFontSize -= 1;
+                } while (ingredientFontSize >= minFontSize);
+                
+                document.body.removeChild(tempIngredientElement);
+            }
+            
+            // 缩小字体大小，优先保证这些内容展示
+            const smallFontSize = Math.max(minFontSize, baseFontSize - 4);
+            
+            // Barcode
+            if (data['A']) {
+                html += `<div style="font-size: ${barcodeFontSize}px; font-weight: bold; margin-bottom: 1mm;">${data['A']}</div>`;
+            }
+            
+            // 产品名称
+            if (data['B']) {
+                html += `<div style="font-size: ${productNameFontSize}px; font-weight: bold; margin-bottom: 4mm;">${data['B']}</div>`;
+            }
+            
+            // 成分
+            if (data['I']) {
+                html += `<div style="font-size: ${ingredientFontSize}px; margin-bottom: 3mm;">`;
+                html += `<div style="font-weight: bold; margin-bottom: 1mm;">Ingredient:</div>`;
+                html += `<div style="word-wrap: break-word;">${data['I']}</div>`;
+                html += `</div>`;
+            }
+            
+            // 计算底部内容的高度并固定布局
+            let bottomContentHtml = '';
+            
+            // 净含量
+            if (data['AU']) {
+                bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 1mm;">Net Content: ${data['AU']}</div>`;
+            }
+            
+            // 原产国
+            if (data['X']) {
+                bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 1mm;">Country Of Origin: ${data['X']}</div>`;
+            }
+            
+            // 储存信息
+            if (data['AS']) {
+                bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 1mm; word-wrap: break-word;">${data['AS']}</div>`;
+            }
+            
+            // 制造商信息
+            if (data['T']) {
+                bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 1mm; word-wrap: break-word;">${data['T']}</div>`;
+            }
+            
+            // 保质期信息
+            bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 0.5mm;">Best before(End YY-MM):</div>`;
+            bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 0.5mm;">Show on package(見包裝)</div>`;
+            
+            // 计算底部内容的高度
+            const tempBottomElement = document.createElement('div');
+            tempBottomElement.style.position = 'absolute';
+            tempBottomElement.style.visibility = 'hidden';
+            tempBottomElement.style.width = (leftWidth - 12) * 3.7795275591 + 'px';
+            tempBottomElement.style.boxSizing = 'border-box';
+            tempBottomElement.innerHTML = bottomContentHtml;
+            document.body.appendChild(tempBottomElement);
+            const bottomContentHeight = tempBottomElement.offsetHeight;
+            document.body.removeChild(tempBottomElement);
+            
+            // 固定高度展示底部内容
+            html += `<div style="height: ${bottomContentHeight}px;">${bottomContentHtml}</div>`;
+            
+            // 确保"此日期前最佳(年月底)"展示在最底下
+            html += `<div style="font-size: ${smallFontSize}px;">此日期前最佳(年月底)</div>`;
+            
+            html += `</div>`;
+            
+            // 右侧 - 营养成分
+            html += `<div style="position: absolute; top: 10mm; left: ${leftWidth + 6}mm; width: ${rightWidth - 12}mm;">`;
+            
+            // 计算右侧内容的字体大小
+            const rightTopContent = `Nutrition Information\nServing Size:\n${data['AV'] || ''}\n${data['AH'] || ''}`;
+            const rightTopFontSize = calculateHealthFoodLabelFontSize(rightTopContent, (rightWidth - 12) * 3.7795275591, rightTopAvailableHeight * 3.7795275591, 18, 12);
+            
+            const rightBottomContent = `Energy: ${data['AJ'] || ''}\nProtein: ${data['AK'] || ''}\nTotal Fat: ${data['AL'] || ''}\nSaturated: ${data['AM'] || ''}\nTrans Fat: ${data['AN'] || ''}\nCarbohydrate: ${data['AO'] || ''}\nSugars: ${data['AP'] || ''}\nSodium: ${data['AQ'] || ''}`;
+            const rightBottomFontSize = calculateHealthFoodLabelFontSize(rightBottomContent, (rightWidth - 12) * 3.7795275591, rightBottomAvailableHeight * 3.7795275591, 16, 12);
+            
+            // 营养信息标题
+            html += `<div style="font-size: ${rightTopFontSize}px; font-weight: bold; margin-bottom: 6mm;">Nutrition Information</div>`;
+            
+            // 食用量
+            if (data['AV']) {
+                html += `<div style="font-size: ${rightTopFontSize}px; margin-bottom: 3mm;">Serving Size:</div>`;
+                html += `<div style="font-size: ${rightTopFontSize}px; margin-bottom: 6mm;">${data['AV']}</div>`;
+            }
+            
+            // 每份信息
+            if (data['AH']) {
+                html += `<div style="font-size: ${rightTopFontSize}px; margin-bottom: 4mm;">${data['AH']}</div>`;
+            }
+            
+            // 能量
+            if (data['AJ']) {
+                html += `<div style="font-size: ${rightBottomFontSize}px; margin-bottom: 2mm;">Energy: ${data['AJ']}</div>`;
+            }
+            
+            // 蛋白质
+            if (data['AK']) {
+                html += `<div style="font-size: ${rightBottomFontSize}px; margin-bottom: 2mm;">Protein: ${data['AK']}</div>`;
+            }
+            
+            // 总脂肪
+            if (data['AL']) {
+                html += `<div style="font-size: ${rightBottomFontSize}px; margin-bottom: 2mm;">Total Fat: ${data['AL']}</div>`;
+            }
+            
+            // 饱和脂肪
+            if (data['AM']) {
+                html += `<div style="font-size: ${rightBottomFontSize}px; margin-bottom: 2mm;">Saturated: ${data['AM']}</div>`;
+            }
+            
+            // 反式脂肪
+            if (data['AN']) {
+                html += `<div style="font-size: ${rightBottomFontSize}px; margin-bottom: 2mm;">Trans Fat: ${data['AN']}</div>`;
+            }
+            
+            // 碳水化合物
+            if (data['AO']) {
+                html += `<div style="font-size: ${rightBottomFontSize}px; margin-bottom: 2mm;">Carbohydrate: ${data['AO']}</div>`;
+            }
+            
+            // 糖
+            if (data['AP']) {
+                html += `<div style="font-size: ${rightBottomFontSize}px; margin-bottom: 2mm;">Sugars: ${data['AP']}</div>`;
+            }
+            
+            // 钠
+            if (data['AQ']) {
+                html += `<div style="font-size: ${rightBottomFontSize}px;">Sodium: ${data['AQ']}</div>`;
+            }
+            
+            html += `</div>`;
+            
+            return html;
+        }
+
+        // 计算保健食品标签内容的合适字体大小
+        function calculateHealthFoodLabelFontSize(text, containerWidth, containerHeight, maxFontSize = 18, minFontSize = 12) {
+            // 创建临时元素用于测量
+            const tempElement = document.createElement('div');
+            tempElement.style.position = 'absolute';
+            tempElement.style.visibility = 'hidden';
+            tempElement.style.width = containerWidth + 'px';
+            tempElement.style.boxSizing = 'border-box';
+            tempElement.textContent = text;
+            document.body.appendChild(tempElement);
+            
+            let fontSize = maxFontSize;
+            let height = 0;
+            
+            // 逐渐减小字体大小，直到文本高度适合容器
+            do {
+                tempElement.style.fontSize = fontSize + 'px';
+                height = tempElement.offsetHeight;
+                fontSize -= 1;
+            } while (height > containerHeight && fontSize >= minFontSize);
+            
+            // 移除临时元素
+            document.body.removeChild(tempElement);
+            
+            // 确保返回的字体大小在合理范围内
+            return Math.max(minFontSize, fontSize + 1);
+        }
+
+        // 渲染特殊标签
+        function renderSpecialLabel(data) {
+            let html = '';
+            
+            // 使用表格布局，避免内容重叠
+            html += `<table style="width: 100%; border-collapse: collapse; margin: 2mm 6mm;">`;
+            
+            // 先显示barcode和产品名称（最上方，间距最小）
+            const topFields = ["A", "B"];
+            topFields.forEach(field => {
+                const value = data[field] || '';
+                if (value) {
+                    // 动态计算字体大小，确保内容能完全显示
+                    let fontSize = 18;
+                    if (value.length > 80) {
+                        fontSize = 16;
+                    } else if (value.length > 150) {
+                        fontSize = 14;
+                    } else if (value.length > 250) {
+                        fontSize = 12;
+                    } else if (value.length > 350) {
+                        fontSize = 10;
+                    }
+                    
+                    html += `<tr>`;
+                    html += `<td style="width: 100%; font-size: ${fontSize}px; padding: 1mm 0; vertical-align: top; padding-right: 10mm;">${value}</td>`;
+                    html += `</tr>`;
+                }
+            });
+            
+            // 然后显示其他字段
+            const otherFields = ["AW", "AS", "AU", "I", "AY"];
+            otherFields.forEach(field => {
+                const value = data[field] || '';
+                if (value) {
+                    // 动态计算字体大小，确保内容能完全显示
+                    let fontSize = 18;
+                    if (value.length > 80) {
+                        fontSize = 16;
+                    } else if (value.length > 150) {
+                        fontSize = 14;
+                    } else if (value.length > 250) {
+                        fontSize = 12;
+                    } else if (value.length > 350) {
+                        fontSize = 10;
+                    }
+                    
+                    html += `<tr>`;
+                    html += `<td style="width: 100%; font-size: ${fontSize}px; padding: 2mm 0; vertical-align: top; padding-right: 10mm;">${value}</td>`;
+                    html += `</tr>`;
+                }
+            });
+            
+            html += `</table>`;
+            
+            return html;
+        }
+
+        // 渲染普通标签
+        function renderOrdinaryLabel(data) {
+            let html = '';
+            
+            const asContent = data['AS'] || '';
+            
+            // 使用表格布局，直接显示完整文本
+            if (asContent) {
+                // 计算标签容器的可用宽度和高度
+                const containerWidth = 210 - 12;
+                const containerHeight = 150 - 20;
+                
+                // 计算合适的字体大小
+                const fontSize = calculateFontSize(asContent, containerWidth * 3.7795275591, containerHeight * 3.7795275591);
+                
+                html += `<table style="width: 100%; border-collapse: collapse; margin: 10mm 6mm;">`;
+                html += `<tr>`;
+                html += `<td style="width: 100%; font-size: ${fontSize}px; padding: 3mm 0; vertical-align: top; padding-right: 10mm;">${asContent}</td>`;
+                html += `</tr>`;
+                html += `</table>`;
+            }
+            
+            return html;
+        }
+
+        // 计算合适的字体大小
+        function calculateFontSize(text, containerWidth, containerHeight, maxFontSize = 72, minFontSize = 8) {
+            // 创建临时元素用于测量
+            const tempElement = document.createElement('div');
+            tempElement.style.position = 'absolute';
+            tempElement.style.visibility = 'hidden';
+            tempElement.style.width = containerWidth + 'px';
+            tempElement.style.paddingRight = '10mm';
+            tempElement.style.boxSizing = 'border-box';
+            tempElement.textContent = text;
+            document.body.appendChild(tempElement);
+            
+            // 从最大字体开始，逐渐减小直到找到合适的大小
+            let fontSize = maxFontSize;
+            let height = 0;
+            
+            // 逐渐减小字体大小，直到文本高度适合容器
+            do {
+                tempElement.style.fontSize = fontSize + 'px';
+                height = tempElement.offsetHeight;
+                fontSize -= 1;
+            } while (height > containerHeight && fontSize >= minFontSize);
+            
+            // 移除临时元素
+            document.body.removeChild(tempElement);
+            
+            // 确保返回的字体大小在合理范围内
+            return Math.max(minFontSize, fontSize + 1);
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeData();
+            changeLanguage('en');
+            updatePlaceholders();
+            updateResultsTables();
+            updateStats();
+            
+            autoPrintToggle.addEventListener('change', function() {
+                if (this.checked) {
+                    const warningMessage = currentLang === 'en' ? 
+                        'Auto print enabled. Please ensure your printer is connected and ready.' : 
+                        '已开启自动打印，请确保打印机已连接并就绪。';
+                    showAlert(warningMessage, 'info');
+                }
+            });
+            
+            setTimeout(() => {
+                if (!orderInput.disabled) {
+                    orderInput.focus();
+                }
+            }, 100);
+        });
+</script>
+</body>
+</html>
