@@ -633,7 +633,7 @@
     </style>
 </head>
 <body>
-        <div class="container">
+    <div class="container">
         <h1>📦 Offline Scanning System</h1>
         <div class="language-switcher">
             <button class="lang-btn active" data-lang="en">English</button>
@@ -779,11 +779,13 @@
                 </table>
             </div>
         </div>
-
-
     </div>
 
     <script>
+        // --- 字典数据中心 (修复的核心逻辑) ---
+        window.bomDict = {}; // 存储 BOM 映射关系
+        window.skuDict = {}; // 存储纯净的 SKU 到 Barcode 映射
+
         // 语言映射
         const translations = {
             en: {
@@ -964,7 +966,7 @@
             }
         };
 
-        // 当前语言
+        // 当前语言补充
         translations.en.scan.forceComplete = '✅ Force Outbound';
         translations.yue.scan.forceComplete = '✅ 強制出庫';
         translations.en.alerts.forceCompleteSuccess = 'Order {waybill} force outbound completed';
@@ -1003,7 +1005,6 @@
         function changeLanguage(lang) {
             currentLang = lang;
             
-            // 更新语言按钮状态
             document.querySelectorAll('.lang-btn').forEach(btn => {
                 btn.classList.remove('active');
                 if (btn.dataset.lang === lang) {
@@ -1011,23 +1012,17 @@
                 }
             });
             
-            // 更新页面标题
             document.title = translations[lang].pageTitle;
-            
-            // 更新header
             document.querySelector('h1').textContent = translations[lang].header;
             
-            // 更新统计卡片
             document.querySelector('.stat-card:nth-child(1) p').textContent = translations[lang].stats.success;
             document.querySelector('.stat-card:nth-child(2) p').textContent = translations[lang].stats.error;
             document.querySelector('.stat-card:nth-child(3) p').textContent = translations[lang].stats.pending;
             document.querySelector('.stat-card:nth-child(4) p').textContent = translations[lang].stats.total;
             
-            // 更新上传区域
             document.querySelector('label[for="orderExcel"]').textContent = translations[lang].upload.orderFile;
             document.querySelector('label[for="skuExcel"]').textContent = translations[lang].upload.skuFile;
             
-            // 更新上传状态文字（如果已有数据）
             const orderStatusEl = document.getElementById('orderStatus');
             const skuStatusEl = document.getElementById('skuStatus');
             
@@ -1039,22 +1034,19 @@
             }
             
             if (skuStatusEl.classList.contains('success') && Object.keys(skuData).length > 0) {
-                const skuCount = Object.keys(skuData).length;
+                const skuCount = Object.keys(window.skuDict).length; // 使用精确的条码数
                 skuStatusEl.textContent = `${translations[lang].upload.success}, ${skuCount} ${translations[lang].upload.skusLoaded}`;
             } else {
                 skuStatusEl.textContent = translations[lang].upload.waiting;
             }
             
-            // 更新扫描区域
             document.querySelector('label[for="orderInput"]').textContent = translations[lang].scan.waybill;
             document.getElementById('orderInput').placeholder = translations[lang].scan.scanWaybill;
             document.querySelector('label[for="barcodeInput"]').textContent = translations[lang].scan.barcode;
             document.getElementById('barcodeInput').placeholder = translations[lang].scan.scanBarcode;
             
-            // 更新订单信息
             document.querySelector('.info-label').textContent = translations[lang].order.title;
             
-            // 更新商品表格
             const productTableHeaders = document.querySelectorAll('#productTable th');
             productTableHeaders[0].textContent = translations[lang].productTable.productId;
             productTableHeaders[1].textContent = translations[lang].productTable.productName;
@@ -1062,17 +1054,14 @@
             productTableHeaders[3].textContent = translations[lang].productTable.quantity;
             productTableHeaders[4].textContent = translations[lang].productTable.scanQuantity;
             
-            // 更新结果查询
             document.querySelector('.results-section h2').textContent = translations[lang].results.title;
             document.getElementById('clearDataBtn').textContent = translations[lang].results.clearData;
             
-            // 更新结果标签
             const correctTab = document.querySelector('.results-tab[data-tab="correct"]');
             const pendingTab = document.querySelector('.results-tab[data-tab="pending"]');
             if (correctTab) correctTab.textContent = translations[lang].results.successfulOrders;
             if (pendingTab) pendingTab.textContent = translations[lang].results.pendingOrders;
             
-            // 更新表格表头
             const correctTableHeaders = document.querySelectorAll('#correctTable th');
             correctTableHeaders[0].textContent = translations[lang].results.waybill;
             correctTableHeaders[1].textContent = translations[lang].results.orderId;
@@ -1087,24 +1076,19 @@
             pendingTableHeaders[3].textContent = translations[lang].results.productCount;
             pendingTableHeaders[4].textContent = translations[lang].results.status;
             
-            // 更新所有占位符
             updatePlaceholders();
-            
-            // 更新结果表格
             updateResultsTables();
         }
 
-        // 初始化语言切换
         document.querySelectorAll('.lang-btn').forEach(btn => {
             btn.addEventListener('click', function() {
-                const lang = this.dataset.lang;
-                changeLanguage(lang);
+                changeLanguage(this.dataset.lang);
             });
         });
 
         // 全局数据存储
         let orderData = {};      // 订单数据
-        let skuData = {};        // SKU数据
+        let skuData = {};        // SKU数据 (保留用于兼容UI的状态显示)
         let currentOrder = null; // 当前订单
         let scanResults = {};    // 扫描结果
         let currentOrderId = ''; // 当前订单ID
@@ -1122,7 +1106,6 @@
         const infoAlert = document.getElementById('infoAlert');
         const clearDataBtn = document.getElementById('clearDataBtn');
 
-        // 统计元素
         const correctCountEl = document.getElementById('correctCount');
         const errorCountEl = document.getElementById('errorCount');
         const pendingCountEl = document.getElementById('pendingCount');
@@ -1143,11 +1126,12 @@
 
                 if (savedSkuData) {
                     const parsed = JSON.parse(savedSkuData);
-                    // 检查是否为新格式（数组），旧格式（对象）需要重新上传
-                    const firstKey = Object.keys(parsed)[0];
-                    if (firstKey && Array.isArray(parsed[firstKey])) {
-                        skuData = parsed;
-                        skuStatus.textContent = `Loaded from cache, ${Object.keys(skuData).length} SKUs`;
+                    // 适配新的存储结构
+                    if (parsed.bomDict && parsed.skuDict) {
+                        window.bomDict = parsed.bomDict;
+                        window.skuDict = parsed.skuDict;
+                        skuData = parsed; // 为了过前面的校验
+                        skuStatus.textContent = `Loaded from cache, ${Object.keys(window.skuDict).length} SKUs`;
                         skuStatus.className = 'upload-status success';
                     } else {
                         // 旧格式缓存，清除并要求重新上传
@@ -1182,7 +1166,11 @@
         function saveToLocalStorage() {
             try {
                 localStorage.setItem('offlineScan_orderData', JSON.stringify(orderData));
-                localStorage.setItem('offlineScan_skuData', JSON.stringify(skuData));
+                localStorage.setItem('offlineScan_skuData', JSON.stringify({
+                    bomDict: window.bomDict,
+                    skuDict: window.skuDict,
+                    isNewFormat: true
+                }));
                 localStorage.setItem('offlineScan_scanResults', JSON.stringify(scanResults));
             } catch (error) {
                 console.error('Failed to save data to localStorage:', error);
@@ -1198,9 +1186,7 @@
                     try {
                         const data = new Uint8Array(e.target.result);
                         const workbook = XLSX.read(data, { type: 'array' });
-                        
-                        const firstSheetName = workbook.SheetNames[0];
-                        const worksheet = workbook.Sheets[firstSheetName];
+                        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
                         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                         
                         processOrderData(jsonData);
@@ -1230,14 +1216,12 @@
                     try {
                         const data = new Uint8Array(e.target.result);
                         const workbook = XLSX.read(data, { type: 'array' });
-                        
-                        const firstSheetName = workbook.SheetNames[0];
-                        const worksheet = workbook.Sheets[firstSheetName];
+                        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
                         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                         
                         processSkuData(jsonData);
                         
-                        const skuCount = Object.keys(skuData).length;
+                        const skuCount = Object.keys(window.skuDict).length;
                         skuStatus.textContent = `${translations[currentLang].upload.success}, ${skuCount} ${translations[currentLang].upload.skusLoaded}`;
                         skuStatus.className = 'upload-status success';
                         showAlert(translations[currentLang].alerts.skuFileUploaded, 'success');
@@ -1253,27 +1237,26 @@
             }
         });
 
-        // 处理订单数据
+        // 🟢【核心逻辑重写 1】处理订单数据并获取纯净 SKU
         function processOrderData(data) {
             if (data.length < 2) return;
-            
             const headers = data[0];
             
-            // 直接匹配确切的列名
-            const deliveryModeIndex = headers.findIndex(h => h && h.toString().trim() === 'Delivery Mode');
-            const orderIdIndex = headers.findIndex(h => h && h.toString().trim() === 'Order ID');
-            const orderDateIndex = headers.findIndex(h => h && h.toString().trim() === 'Order Date');
-            const orderTimeIndex = headers.findIndex(h => h && h.toString().trim() === 'Order Time');
-            const pickupDateIndex = headers.findIndex(h => h && h.toString().trim() === 'Pickup Date');
-            const pickupTimeIndex = headers.findIndex(h => h && h.toString().trim() === 'Pickup Time');
-            const skuIdIndex = headers.findIndex(h => h && h.toString().trim() === 'SKU ID');
-            const merchantProductIdIndex = headers.findIndex(h => h && h.toString().trim() === 'Merchant Product ID');
-            const skuNameZhIndex = headers.findIndex(h => h && h.toString().trim() === 'SKU Name (Chinese)');
-            const totalQtyIndex = headers.findIndex(h => h && h.toString().trim() === 'Total Qty');
-            const waybillIndex = headers.findIndex(h => h && h.toString().trim() === 'Waybill');
-            const deliveryDateIndex = headers.findIndex(h => h && h.toString().trim() === 'Delivery Date');
+            const getIdx = (name) => headers.findIndex(h => h && h.toString().trim() === name);
             
-            // 按运单号分组
+            const deliveryModeIndex = getIdx('Delivery Mode');
+            const orderIdIndex = getIdx('Order ID');
+            const orderDateIndex = getIdx('Order Date');
+            const orderTimeIndex = getIdx('Order Time');
+            const pickupDateIndex = getIdx('Pickup Date');
+            const pickupTimeIndex = getIdx('Pickup Time');
+            const skuIdIndex = getIdx('SKU ID');
+            const merchantProductIdIndex = getIdx('Merchant Product ID');
+            const skuNameZhIndex = getIdx('SKU Name (Chinese)');
+            const totalQtyIndex = getIdx('Total Qty');
+            const waybillIndex = getIdx('Waybill');
+            const deliveryDateIndex = getIdx('Delivery Date');
+            
             const ordersByWaybill = {};
             
             for (let i = 1; i < data.length; i++) {
@@ -1287,7 +1270,6 @@
                     ordersByWaybill[waybill] = {
                         waybill: waybill,
                         orderId: orderIdIndex !== -1 && row[orderIdIndex] ? row[orderIdIndex].toString().trim() : '',
-                        shippingMethod: deliveryModeIndex !== -1 && row[deliveryModeIndex] ? row[deliveryModeIndex].toString().trim() : '',
                         orderDate: orderDateIndex !== -1 && row[orderDateIndex] ? row[orderDateIndex].toString().trim() : '',
                         orderTime: orderTimeIndex !== -1 && row[orderTimeIndex] ? row[orderTimeIndex].toString().trim() : '',
                         pickupDate: pickupDateIndex !== -1 && row[pickupDateIndex] ? row[pickupDateIndex].toString().trim() : '',
@@ -1300,8 +1282,20 @@
                     };
                 }
                 
+                // 【核心改进】优先纯净ID，降级去前缀
+                let productId = merchantProductIdIndex !== -1 && row[merchantProductIdIndex] ? row[merchantProductIdIndex].toString().trim() : '';
+                if (!productId && skuIdIndex !== -1 && row[skuIdIndex]) {
+                    let skuStr = row[skuIdIndex].toString().trim();
+                    if (skuStr.includes('_')) {
+                        let parts = skuStr.split('_');
+                        productId = parts[parts.length - 1]; // 去除前缀提取出纯粹 SKU
+                    } else {
+                        productId = skuStr;
+                    }
+                }
+
                 const product = {
-                    productId: merchantProductIdIndex !== -1 && row[merchantProductIdIndex] ? row[merchantProductIdIndex].toString().trim() : '',
+                    productId: productId,
                     skuId: skuIdIndex !== -1 && row[skuIdIndex] ? row[skuIdIndex].toString().trim() : '',
                     skuNameZh: skuNameZhIndex !== -1 && row[skuNameZhIndex] ? row[skuNameZhIndex].toString().trim() : '',
                     quantity: totalQtyIndex !== -1 && row[totalQtyIndex] ? parseInt(row[totalQtyIndex]) : 0,
@@ -1312,85 +1306,72 @@
                 ordersByWaybill[waybill].products.push(product);
             }
             
-            // 合并到orderData
             for (const waybill in ordersByWaybill) {
                 orderData[waybill] = ordersByWaybill[waybill];
             }
         }
 
-        // 处理SKU数据
+        // 🟢【核心逻辑重写 2】解析 BOM 字典与 Barcode 字典
         function processSkuData(data) {
             if (data.length < 2) return;
-            
             const headers = data[0];
             
-            const baseSkuIndex = headers.findIndex(h => h && h.toString().toLowerCase().includes('base') && h.toString().toLowerCase().includes('sku'));
-            const nameIndex = headers.findIndex(h => h && h.toString().toLowerCase().includes('name'));
-            const barcodeIndex = headers.findIndex(h => h && h.toString().toLowerCase().includes('barcode'));
-            const bomIndex = headers.findIndex(h => h && h.toString().toLowerCase().includes('bom'));
-            const childSkuIndex = headers.findIndex(h => h && h.toString().toLowerCase().includes('child') && h.toString().toLowerCase().includes('sku'));
-            const childNameIndex = headers.findIndex(h => h && h.toString().toLowerCase().includes('child') && h.toString().toLowerCase().includes('name'));
-            const comboQtyIndex = headers.findIndex(h => h && h.toString().toLowerCase().includes('combo') && h.toString().toLowerCase().includes('qty'));
-            const childBarcodeIndex = headers.findIndex(h => h && h.toString().toLowerCase().includes('child') && h.toString().toLowerCase().includes('barcode'));
+            const getIdx = (name) => headers.findIndex(h => h && h.toString().trim().toLowerCase() === name.toLowerCase());
+
+            const baseSkuIdx = getIdx('Base SKU');
+            const nameIdx = getIdx('Name');
+            const barcodeIdx = getIdx('Barcode');
+            const bomIdx = getIdx('BOM');
+            const bomSkuIdx = getIdx('BOM SKU');
+            const bomUnitIdx = getIdx('BOM Unit');
+            const bomBarcodeIdx = getIdx('BOM Barcode');
             
-            const backupChildSkuIndex = 4; // E列
-            const backupChildNameIndex = 5; // F列
-            const backupComboQtyIndex = 6; // G列
-            const backupChildBarcodeIndex = 7; // H列
-            
-            skuData = {};
+            window.skuDict = {};
+            window.bomDict = {};
+            skuData = { _initialized: true }; // 维持UI验证
             
             for (let i = 1; i < data.length; i++) {
                 const row = data[i];
                 if (!row || row.length === 0) continue;
                 
-                const baseSku = row[baseSkuIndex] ? row[baseSkuIndex].toString().trim() : '';
-                if (!baseSku) continue;
+                const baseSku = baseSkuIdx !== -1 && row[baseSkuIdx] ? row[baseSkuIdx].toString().trim() : '';
+                const baseBarcode = barcodeIdx !== -1 && row[barcodeIdx] ? row[barcodeIdx].toString().trim() : '';
+                const isBom = bomIdx !== -1 && row[bomIdx] ? row[bomIdx].toString().trim().toUpperCase() === 'YES' : false;
                 
-                const isBom = bomIndex !== -1 && row[bomIndex] ? row[bomIndex].toString().trim().toLowerCase() === 'yes' : false;
-                
-                const actualChildSkuIndex = childSkuIndex !== -1 ? childSkuIndex : backupChildSkuIndex;
-                const actualChildNameIndex = childNameIndex !== -1 ? childNameIndex : backupChildNameIndex;
-                const actualComboQtyIndex = comboQtyIndex !== -1 ? comboQtyIndex : backupComboQtyIndex;
-                const actualChildBarcodeIndex = childBarcodeIndex !== -1 ? childBarcodeIndex : backupChildBarcodeIndex;
-                
-                const skuItem = {
-                    skuId: baseSku,
-                    name: row[nameIndex] ? row[nameIndex].toString().trim() : '',
-                    barcode: row[barcodeIndex] ? row[barcodeIndex].toString().trim() : '',
-                    isBom: isBom,
-                    baseSku: baseSku,
-                    childSku: row[actualChildSkuIndex] ? row[actualChildSkuIndex].toString().trim() : '',
-                    childName: row[actualChildNameIndex] ? row[actualChildNameIndex].toString().trim() : '',
-                    comboQty: actualComboQtyIndex !== -1 && row[actualComboQtyIndex] ? parseInt(row[actualComboQtyIndex]) : 1,
-                    childBarcode: row[actualChildBarcodeIndex] ? row[actualChildBarcodeIndex].toString().trim() : ''
-                };
-                
-                if (!skuData[baseSku]) {
-                    skuData[baseSku] = [];
+                // 1. 保存所有单品的 Barcode
+                if (baseSku) {
+                    window.skuDict[baseSku] = (baseBarcode === '0' ? '' : baseBarcode);
                 }
-                skuData[baseSku].push(skuItem);
-            }
-            
-            // 将SKU的barcode关联到订单中的商品
-            for (const waybill in orderData) {
-                const order = orderData[waybill];
-                order.products.forEach(product => {
-                    const skuItems = getSkuItemsForProduct(product);
-                    const primarySkuItem = getPrimarySkuItem(skuItems);
-                    if (skuItems.length > 0) {
-                        product.barcode = primarySkuItem && primarySkuItem.barcode ? primarySkuItem.barcode : '';
-                    } else if (!product.barcode) {
-                        product.barcode = '';
+                
+                // 2. 如果是BOM，构建母子单拆分映射
+                if (isBom) {
+                    const parentSku = bomSkuIdx !== -1 && row[bomSkuIdx] ? row[bomSkuIdx].toString().trim() : '';
+                    const parentBarcode = bomBarcodeIdx !== -1 && row[bomBarcodeIdx] ? row[bomBarcodeIdx].toString().trim() : '';
+                    const childName = nameIdx !== -1 && row[nameIdx] ? row[nameIdx].toString().trim() : '';
+                    // 【关键】读取表格里的 BOM Unit 作为乘法倍数
+                    const unit = bomUnitIdx !== -1 && row[bomUnitIdx] ? parseInt(row[bomUnitIdx]) : 1;
+
+                    if (parentSku) {
+                        if (!window.bomDict[parentSku]) window.bomDict[parentSku] = [];
+                        window.bomDict[parentSku].push({
+                            sku: baseSku,
+                            barcode: (baseBarcode === '0' ? '' : baseBarcode),
+                            name: childName,
+                            unit: unit
+                        });
+                        
+                        // 记录母单条码
+                        if (parentBarcode && parentBarcode !== '0') {
+                            window.skuDict[parentSku] = parentBarcode;
+                        }
                     }
-                });
+                }
             }
         }
 
-        // 检查文件是否都上传完成
         function checkFilesReady() {
             const hasOrderData = Object.keys(orderData).length > 0;
-            const hasSkuData = Object.keys(skuData).length > 0;
+            const hasSkuData = Object.keys(window.skuDict).length > 0;
             
             if (hasOrderData && hasSkuData) {
                 showAlert(translations[currentLang].alerts.filesReady, 'success');
@@ -1404,244 +1385,79 @@
             }
         }
 
-        // 显示提示信息
         function showAlert(message, type) {
             infoAlert.textContent = message;
             infoAlert.className = `alert alert-${type} show`;
-            
-            setTimeout(() => {
-                infoAlert.classList.remove('show');
-            }, 5000);
+            setTimeout(() => infoAlert.classList.remove('show'), 5000);
         }
 
-        // 扫描运单号
         orderInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 const orderId = this.value.trim();
-                if (orderId) {
-                    loadOrder(orderId);
-                }
+                if (orderId) loadOrder(orderId);
             }
         });
 
-        // 格式化日期时间
+        // 日期处理助手 (保留原逻辑)
         function formatDateTime(dateStr, timeStr) {
             if (!dateStr) return '';
-            
             let formattedDate = '';
             let date;
-            
-            // 检查是否是真正的数字（只包含数字和可能的小数点）
             const isNumeric = /^\d+(\.\d+)?$/.test(dateStr);
-            
-            // 尝试解析Excel日期序列号（只有当它是真正的数字时）
             if (isNumeric) {
                 const numDate = parseFloat(dateStr);
                 if (!isNaN(numDate) && numDate > 0) {
-                    // Excel日期序列号转换
-                    const excelEpoch = new Date(1899, 11, 30); // Excel的基准日期
+                    const excelEpoch = new Date(1899, 11, 30);
                     const milliseconds = (numDate - 1) * 24 * 60 * 60 * 1000;
                     date = new Date(excelEpoch.getTime() + milliseconds);
-                    // 修复Excel日期序列号可能导致的年份错误
-                    if (date.getFullYear() < 1970) {
-                        // 如果年份小于1970，可能是Excel日期序列号解析错误，尝试直接使用字符串
-                        date = new Date(dateStr);
-                    }
+                    if (date.getFullYear() < 1970) date = new Date(dateStr);
                 }
             } else if (dateStr.includes('/')) {
-                // 处理如 "21/1/2026" 这样的格式
                 const dateParts = dateStr.split('/');
                 if (dateParts.length === 3) {
-                    // 假设格式为 dd/mm/yyyy
-                    const day = parseInt(dateParts[0]);
-                    const month = parseInt(dateParts[1]) - 1; // 月份从0开始
-                    const year = parseInt(dateParts[2]);
-                    // 直接使用年-月-日格式创建日期对象
-                    date = new Date(year, month, day);
+                    date = new Date(parseInt(dateParts[2]), parseInt(dateParts[1]) - 1, parseInt(dateParts[0]));
                 } else {
                     date = new Date(dateStr);
                 }
-            } else if (dateStr.includes('-')) {
-                // 处理如 "2026-01-21" 这样的格式
-                date = new Date(dateStr);
             } else {
-                // 尝试其他格式
                 date = new Date(dateStr);
             }
             
             if (isNaN(date.getTime())) {
-                // 如果日期解析失败，尝试另一种方法
-                // 直接解析 dd/mm/yyyy 格式
                 if (dateStr.includes('/')) {
                     const dateParts = dateStr.split('/');
-                    if (dateParts.length === 3) {
-                        const day = parseInt(dateParts[0]);
-                        const month = parseInt(dateParts[1]) - 1;
-                        const year = parseInt(dateParts[2]);
-                        date = new Date(year, month, day);
-                    }
+                    if (dateParts.length === 3) date = new Date(parseInt(dateParts[2]), parseInt(dateParts[1]) - 1, parseInt(dateParts[0]));
                 }
             }
+            if (isNaN(date.getTime())) return timeStr ? `${dateStr} ${timeStr}` : dateStr;
             
-            if (isNaN(date.getTime())) {
-                // 如果日期解析仍然失败，直接返回原始值
-                if (timeStr) {
-                    return `${dateStr} ${timeStr}`;
-                }
-                return dateStr;
-            }
-            
-            // 格式化为 yyyy-MM-dd
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const day = String(date.getDate()).padStart(2, '0');
             formattedDate = `${year}-${month}-${day}`;
             
-            // 处理时间部分
             if (timeStr) {
-                // 确保时间格式为 HH:mm:ss
                 let formattedTime = timeStr;
                 if (timeStr.includes(':')) {
                     const timeParts = timeStr.split(':');
                     if (timeParts.length >= 2) {
-                        const hours = String(timeParts[0]).padStart(2, '0');
-                        const minutes = String(timeParts[1]).padStart(2, '0');
-                        const seconds = timeParts.length >= 3 ? String(timeParts[2]).padStart(2, '0') : '00';
-                        formattedTime = `${hours}:${minutes}:${seconds}`;
+                        formattedTime = `${String(timeParts[0]).padStart(2, '0')}:${String(timeParts[1]).padStart(2, '0')}:${timeParts.length >= 3 ? String(timeParts[2]).padStart(2, '0') : '00'}`;
                     }
                 }
                 return `${formattedDate} ${formattedTime}`;
             }
-            
             return formattedDate;
         }
 
-        // 格式化扫描时间
         function formatScanTime(scanTime) {
             if (!scanTime) return '';
-            
-            if (scanTime instanceof Date) {
-                scanTime = scanTime.toISOString();
-            }
-            
-            let date;
-            
-            if (scanTime.includes('T')) {
-                date = new Date(scanTime);
-            } 
-            else if (scanTime.includes(',')) {
-                date = new Date(scanTime);
-            } 
-            else {
-                date = new Date(scanTime);
-            }
-            
-            if (isNaN(date.getTime())) {
-                return scanTime;
-            }
-            
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            const hours = String(date.getHours()).padStart(2, '0');
-            const minutes = String(date.getMinutes()).padStart(2, '0');
-            const seconds = String(date.getSeconds()).padStart(2, '0');
-            
-            return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+            if (scanTime instanceof Date) scanTime = scanTime.toISOString();
+            let date = new Date(scanTime);
+            if (isNaN(date.getTime())) return scanTime;
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
         }
 
-        function extractBomMultiplier(name, fallback = 1) {
-            if (!name) return fallback;
-
-            const match = name.toString().match(/[x×]\s*(\d+)/i);
-            if (!match) return fallback;
-
-            const multiplier = parseInt(match[1], 10);
-            return Number.isNaN(multiplier) || multiplier <= 0 ? fallback : multiplier;
-        }
-
-        function findMatchedBomItem(product, skuItems) {
-            const bomItems = skuItems.filter(item => item.isBom && (item.childSku || item.childName || item.childBarcode));
-            if (bomItems.length === 0) {
-                return null;
-            }
-
-            const matchedBomItem = bomItems.find(item => item.childSku && product.skuId && item.childSku === product.skuId)
-                || bomItems.find(item => item.childName && product.skuNameZh && item.childName === product.skuNameZh)
-                || bomItems.find(item => item.childSku && product.productId && item.childSku === product.productId);
-
-            if (matchedBomItem) {
-                return matchedBomItem;
-            }
-
-            const uniqueMotherKeys = new Set(
-                bomItems.map(item => `${item.childSku || ''}__${item.childBarcode || ''}__${item.childName || ''}`)
-            );
-            return uniqueMotherKeys.size === 1 ? bomItems[0] : null;
-        }
-
-        function getSkuItemsForProduct(product) {
-            if (!product) {
-                return [];
-            }
-
-            const skuKeys = [product.productId, product.skuId].filter(Boolean);
-            for (const key of skuKeys) {
-                if (skuData[key] && Array.isArray(skuData[key]) && skuData[key].length > 0) {
-                    return skuData[key];
-                }
-            }
-
-            return [];
-        }
-
-        function getPrimarySkuItem(skuItems) {
-            if (!skuItems || skuItems.length === 0) {
-                return null;
-            }
-
-            return skuItems.find(item => !item.isBom && item.barcode)
-                || skuItems.find(item => !item.isBom)
-                || skuItems.find(item => item.barcode)
-                || skuItems[0];
-        }
-
-        function buildBomChildren(bomItem, bomMultiplier, fallbackBarcode = '') {
-            if (!bomItem) {
-                return [];
-            }
-
-            return [{
-                skuId: bomItem.baseSku || bomItem.skuId,
-                name: bomItem.name,
-                comboQty: bomMultiplier || 1,
-                barcode: bomItem.barcode || fallbackBarcode || '',
-                scanQty: 0
-            }];
-        }
-
-        function getBomChildTargetQty(product, child) {
-            const parentQty = product.bomComboQty || product.quantity || 0;
-            return parentQty * (child.comboQty || 1);
-        }
-
-        function getBomChildFulfilledQty(product, child) {
-            return (child.scanQty || 0) + ((product.scanQty || 0) * (child.comboQty || 1));
-        }
-
-        function getDisplayedChildScanQty(product, child) {
-            return getBomChildFulfilledQty(product, child);
-        }
-
-        function isBomProductCompleted(product) {
-            if (!product || !product.isBom || !product.children || product.children.length === 0) {
-                return false;
-            }
-
-            return product.children.every(child => getBomChildFulfilledQty(product, child) >= getBomChildTargetQty(product, child));
-        }
-
-        // 加载订单
+        // 🟢【核心逻辑重写 3】载入并拆分订单，精准匹配 Barcode 与 计算数量
         function loadOrder(waybill) {
             currentOrderId = waybill;
             
@@ -1654,71 +1470,49 @@
             const completedInOrderData = orderData[waybill].status === 'completed';
             if (completedInResults || completedInOrderData) {
                 showAlert(translations[currentLang].alerts.orderAlreadyCompleted.replace('{waybill}', waybill), 'info');
-                orderInput.value = '';
-                orderInput.disabled = false;
-                barcodeInput.value = '';
-                barcodeInput.disabled = true;
-                resetOrderBtn.disabled = true;
-                forceCompleteBtn.disabled = true;
-                orderInput.focus();
+                resetState();
                 return;
             }
             
             currentOrder = JSON.parse(JSON.stringify(orderData[waybill]));
             
-            // 确保每个商品都有barcode，处理BOM组合商品
+            // 匹配母子单并应用字典
             currentOrder.products.forEach(product => {
-                const skuItems = getSkuItemsForProduct(product);
-                if (skuItems.length > 0) {
-                    const primarySkuItem = getPrimarySkuItem(skuItems);
-                    const matchedBomItem = findMatchedBomItem(product, skuItems);
-                    product.isBom = Boolean(matchedBomItem);
+                const pid = product.productId;
+                
+                if (window.bomDict && window.bomDict[pid]) {
+                    // 这是 BOM 母单，进行拆分
+                    product.isBom = true;
+                    product.bomProductId = pid;
+                    product.bomName = product.skuNameZh;
+                    product.bomBarcode = window.skuDict[pid] || ''; // 取母单条码
+                    product.bomComboQty = 1; 
+                    product.barcode = product.bomBarcode;
                     
-                    if (product.isBom) {
-                        // BOM母件行：取第一条BOM记录的childSku/childName/childBarcode作为母件显示
-                        product.bomProductId = matchedBomItem.childSku || product.skuId || product.productId;
-                        product.bomName = matchedBomItem.childName || product.skuNameZh;
-                        product.bomBarcode = matchedBomItem.childBarcode || '';
-                        product.bomComboQty = matchedBomItem.comboQty || 1;
-                        product.bomMultiplier = extractBomMultiplier(product.bomName, 1);
-                        product.barcode = product.bomBarcode;
-                        
-                        // 子件行：锁定当前母件对应的子件，只展示一行
-                        product.children = buildBomChildren(matchedBomItem, product.bomMultiplier, primarySkuItem ? primarySkuItem.barcode : '');
-                    } else {
-                        product.barcode = primarySkuItem && primarySkuItem.barcode ? primarySkuItem.barcode : '';
-                        product.isBom = false;
-                        product.children = [];
-                    }
+                    product.children = window.bomDict[pid].map(child => ({
+                        skuId: child.sku,
+                        name: child.name,
+                        comboQty: child.unit, // <-- 直接使用准确提取的 BOM Unit
+                        barcode: child.barcode,
+                        scanQty: 0
+                    }));
                 } else {
-                    product.barcode = product.barcode || '';
+                    // 普通单品
                     product.isBom = false;
+                    product.barcode = window.skuDict[pid] || ''; // 取自身条码
                     product.children = [];
                 }
             });
             
             let contentHtml = '';
             contentHtml += `<p><strong data-i18n="order.waybill">:</strong> ${currentOrder.waybill}</p>`;
-            if (currentOrder.orderId) {
-                contentHtml += `<p><strong data-i18n="order.orderId">:</strong> ${currentOrder.orderId}</p>`;
-            }
-            
-            const orderDateTime = formatDateTime(currentOrder.orderDate, currentOrder.orderTime);
-            contentHtml += `<p><strong data-i18n="order.orderTime">:</strong> ${orderDateTime || ''}</p>`;
-            
-            const pickupDateTime = formatDateTime(currentOrder.pickupDate, currentOrder.pickupTime);
-            contentHtml += `<p><strong data-i18n="order.pickupTime">:</strong> ${pickupDateTime || ''}</p>`;
-            
-            const deliveryDateTime = formatDateTime(currentOrder.deliveryDate);
-            contentHtml += `<p><strong data-i18n="order.deliveryTime">:</strong> ${deliveryDateTime || ''}</p>`;
-            
+            if (currentOrder.orderId) contentHtml += `<p><strong data-i18n="order.orderId">:</strong> ${currentOrder.orderId}</p>`;
+            contentHtml += `<p><strong data-i18n="order.orderTime">:</strong> ${formatDateTime(currentOrder.orderDate, currentOrder.orderTime) || ''}</p>`;
+            contentHtml += `<p><strong data-i18n="order.pickupTime">:</strong> ${formatDateTime(currentOrder.pickupDate, currentOrder.pickupTime) || ''}</p>`;
             contentHtml += `<p><strong data-i18n="order.productCount">:</strong> ${getProductCount(currentOrder.products)}</p>`;
             
             document.getElementById('orderContent').innerHTML = contentHtml;
-            
-            // 更新占位符
             updatePlaceholders();
-            
             renderProductTable();
             
             orderInput.value = waybill;
@@ -1727,37 +1521,33 @@
             barcodeInput.focus();
             resetOrderBtn.disabled = false;
             forceCompleteBtn.disabled = false;
-            
         }
 
-        // 计算商品数量（BOM母商品不计入，只计算子商品）
-        function getProductTargetCount(product) {
-            if (!product) return 0;
+        // 数量计算与完成状态判定
+        function getBomChildTargetQty(product, child) {
+            return (product.quantity || 0) * (child.comboQty || 1);
+        }
 
-            if (product.isBom && product.children && product.children.length > 0) {
-                return product.children.reduce((total, child) => total + getBomChildTargetQty(product, child), 0);
-            }
+        function getBomChildFulfilledQty(product, child) {
+            return (child.scanQty || 0) + ((product.scanQty || 0) * (child.comboQty || 1));
+        }
 
-            const skuItems = getSkuItemsForProduct(product);
-            if (skuItems.length > 0) {
-                const matchedBomItem = findMatchedBomItem(product, skuItems);
-                if (matchedBomItem) {
-                    const bomName = matchedBomItem.childName || product.skuNameZh;
-                    const bomComboQty = matchedBomItem.comboQty || 1;
-                    const bomMultiplier = extractBomMultiplier(bomName, 1);
-                    return bomComboQty * bomMultiplier;
-                }
-            }
-
-            return product.quantity || 0;
+        function isBomProductCompleted(product) {
+            if (!product || !product.isBom || !product.children || product.children.length === 0) return false;
+            return product.children.every(child => getBomChildFulfilledQty(product, child) >= getBomChildTargetQty(product, child));
         }
 
         function getProductCount(products) {
             if (!products) return 0;
-            return products.reduce((total, product) => total + getProductTargetCount(product), 0);
+            return products.reduce((total, product) => {
+                if (product.isBom && product.children) {
+                    return total + product.children.reduce((sub, child) => sub + getBomChildTargetQty(product, child), 0);
+                }
+                return total + (product.quantity || 0);
+            }, 0);
         }
 
-        // 渲染商品表格
+        // 渲染表格
         function renderProductTable() {
             productTableBody.innerHTML = '';
             
@@ -1767,141 +1557,95 @@
             }
             
             currentOrder.products.forEach((product, index) => {
-                // BOM母件用bomProductId/bomName/bomBarcode显示
-                const displayId = product.isBom ? (product.bomProductId || product.productId) : product.productId;
-                const displayName = product.isBom ? (product.bomName || product.skuNameZh) : product.skuNameZh;
-                const displayBarcode = product.isBom ? (product.bomBarcode || product.barcode) : product.barcode;
-                const displayQty = product.isBom ? product.bomComboQty : product.quantity;
+                const displayId = product.isBom ? product.bomProductId : product.productId;
+                const displayName = product.isBom ? product.bomName : product.skuNameZh;
+                const displayBarcode = product.isBom ? product.bomBarcode : product.barcode;
+                const displayQty = product.quantity;
                 
                 const row = document.createElement('tr');
                 row.className = 'product-row';
-                row.dataset.index = index;
-                
                 row.innerHTML = `
                     <td><strong>${displayId}</strong></td>
                     <td>${displayName}</td>
-                    <td>${displayBarcode}</td>
+                    <td>${displayBarcode || '<span style="color:#cbd5e1">-</span>'}</td>
                     <td><strong>${displayQty}</strong></td>
-                    <td><input type="number" class="quantity-input" value="${product.scanQty || 0}" min="0" data-index="${index}" onchange="updateScanQty(${index}, this.value)"></td>
+                    <td><input type="number" class="quantity-input" value="${product.scanQty || 0}" min="0" onchange="updateScanQty(${index}, this.value)"></td>
                 `;
-                
                 productTableBody.appendChild(row);
                 
-                // 子商品行
-                if (product.isBom && product.children && product.children.length > 0) {
+                if (product.isBom && product.children) {
                     product.children.forEach((child, childIndex) => {
                         const childRow = document.createElement('tr');
                         childRow.className = 'product-row child-row';
                         childRow.dataset.parentIndex = index;
-                        childRow.dataset.childIndex = childIndex;
                         childRow.style.borderLeft = '3px solid #667eea';
                         
-                        const childQuantity = getBomChildTargetQty(product, child);
+                        const targetQty = getBomChildTargetQty(product, child);
+                        const currentScan = getBomChildFulfilledQty(product, child);
                         
                         childRow.innerHTML = `
                             <td style="padding-left: 30px; color: #666;">${child.skuId}</td>
-                            <td style="padding-left: 30px; color: #666;">${child.name}</td>
-                            <td style="color: #666;">${child.barcode}</td>
-                            <td style="color: #666;"><strong>${childQuantity}</strong></td>
-                            <td><input type="number" class="quantity-input" min="0" value="${getDisplayedChildScanQty(product, child)}" onchange="updateChildScanQty(${index}, ${childIndex}, this.value)"></td>
+                            <td style="padding-left: 30px; color: #666;">[子單] ${child.name}</td>
+                            <td style="color: #666;">${child.barcode || '<span style="color:#cbd5e1">-</span>'}</td>
+                            <td style="color: #666;"><strong>${targetQty}</strong></td>
+                            <td><input type="number" class="quantity-input" min="0" value="${currentScan}" onchange="updateChildScanQty(${index}, ${childIndex}, this.value)"></td>
                         `;
-                        childRow.style.height = '40px';
-                        childRow.style.padding = '4px 8px';
-                        
                         productTableBody.appendChild(childRow);
                     });
                 }
             });
         }
 
-        // 更新扫描数量
+        // 数量更新与进度追踪
         function updateScanQty(index, value) {
-            if (!currentOrder || !currentOrder.products[index]) return;
-            
             const qty = parseInt(value);
             if (isNaN(qty) || qty < 0) return;
-            
             currentOrder.products[index].scanQty = qty;
-            
             updateOrderProgress();
             renderProductTable();
-            
-            // 检查是否所有商品都已完成
             checkAllProductsCompleted();
         }
 
-        // 更新子商品扫描数量
         function updateChildScanQty(parentIndex, childIndex, value) {
-            if (!currentOrder || !currentOrder.products[parentIndex]) return;
-            
             const product = currentOrder.products[parentIndex];
-            if (!product.children || !product.children[childIndex]) return;
-            
+            const child = product.children[childIndex];
             const qty = parseInt(value);
             if (isNaN(qty) || qty < 0) return;
             
-            const child = product.children[childIndex];
             const parentContribution = (product.scanQty || 0) * (child.comboQty || 1);
             child.scanQty = Math.max(0, qty - parentContribution);
             
             updateOrderProgress();
             renderProductTable();
-            
-            // 检查是否所有商品都已完成
             checkAllProductsCompleted();
         }
 
-        // 更新订单进度
         function updateOrderProgress() {
             if (!currentOrder || !currentOrder.products) return;
-            
             let totalItems = 0;
             let completedItems = 0;
             
             currentOrder.products.forEach(product => {
+                totalItems++;
                 if (product.isBom && product.children) {
-                    // 组合商品：母件扫码与子件扫码混合累计，满足所有子件目标数即完成
-                    const allChildrenDone = isBomProductCompleted(product);
-                    // 母件算1项
-                    totalItems++;
-                    if (allChildrenDone) {
-                        completedItems++;
-                    }
+                    if (isBomProductCompleted(product)) completedItems++;
                 } else {
-                    // 非组合商品
-                    totalItems++;
-                    if (product.scanQty >= product.quantity) {
-                        completedItems++;
-                    }
+                    if (product.scanQty >= product.quantity) completedItems++;
                 }
             });
-            
             currentOrder.scanProgress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
         }
 
-        // 检查是否所有商品都已完成
         function checkAllProductsCompleted() {
-            if (!currentOrder || !currentOrder.products) return;
-            
             let allCompleted = true;
-            
             currentOrder.products.forEach(product => {
                 if (product.isBom && product.children) {
-                    // 组合商品：母件扫码与子件扫码混合累计，满足所有子件目标数即完成
-                    if (!isBomProductCompleted(product)) {
-                        allCompleted = false;
-                    }
+                    if (!isBomProductCompleted(product)) allCompleted = false;
                 } else {
-                    // 非组合商品
-                    if (product.scanQty < product.quantity) {
-                        allCompleted = false;
-                    }
+                    if (product.scanQty < product.quantity) allCompleted = false;
                 }
             });
-            
-            if (allCompleted) {
-                completeOrder();
-            }
+            if (allCompleted) completeOrder();
         }
 
         // 扫描条码
@@ -1910,38 +1654,24 @@
                 const barcode = this.value.trim();
                 if (barcode) {
                     scanBarcode(barcode);
-                    
-                    // 清空输入框并继续聚焦
                     this.value = '';
                     this.focus();
                 }
             }
         });
 
-        // 扫描条码处理
         function scanBarcode(barcode) {
-            if (!currentOrder || !currentOrder.products) {
-                showAlert(translations[currentLang].alerts.scanWaybillFirst, 'error');
-                return;
-            }
-            
+            if (!currentOrder || !currentOrder.products) return;
             let matched = false;
             let matchedProduct = null;
             let matchedIndex = -1;
-            let isChild = false;
-            let childInfo = null;
             
-            // 遍历所有商品
             for (let i = 0; i < currentOrder.products.length; i++) {
                 const product = currentOrder.products[i];
-                
                 if (product.isBom && product.children) {
-                    // 先检查是否匹配母件条码
-                    const parentBarcode = product.bomBarcode || product.barcode;
-                    if (parentBarcode === barcode) {
-                        const parentQty = product.bomComboQty || 1;
-                        if ((product.scanQty || 0) >= parentQty || isBomProductCompleted(product)) {
-                            showAlert(translations[currentLang].alerts.productSufficient.replace('{productId}', product.bomProductId || product.productId), 'info');
+                    if (product.bomBarcode === barcode) {
+                        if (isBomProductCompleted(product) || (product.scanQty || 0) >= product.quantity) {
+                            showAlert(translations[currentLang].alerts.productSufficient.replace('{productId}', product.bomProductId), 'info');
                         } else {
                             product.scanQty = (product.scanQty || 0) + 1;
                             matchedProduct = product;
@@ -1950,27 +1680,21 @@
                         }
                         break;
                     }
-                    // 再检查子商品条码
                     for (let j = 0; j < product.children.length; j++) {
                         const child = product.children[j];
                         if (child.barcode === barcode) {
-                            const childQuantity = getBomChildTargetQty(product, child);
-                            const fulfilledQty = getBomChildFulfilledQty(product, child);
-                            if (fulfilledQty >= childQuantity) {
+                            if (getBomChildFulfilledQty(product, child) >= getBomChildTargetQty(product, child)) {
                                 showAlert(translations[currentLang].alerts.productSufficient.replace('{productId}', child.skuId), 'info');
                             } else {
                                 child.scanQty = (child.scanQty || 0) + 1;
                                 matchedProduct = child;
-                                matchedIndex = i;
-                                isChild = true;
-                                childInfo = { parentIndex: i, childIndex: j };
+                                matchedIndex = i; // 标记父节点方便高亮
                                 matched = true;
                             }
                             break;
                         }
                     }
                 } else if (!product.isBom) {
-                    // 非组合商品可以直接扫描
                     if (product.barcode === barcode) {
                         if (product.scanQty >= product.quantity) {
                             showAlert(translations[currentLang].alerts.productSufficient.replace('{productId}', product.productId), 'info');
@@ -1983,103 +1707,64 @@
                         break;
                     }
                 }
-                
                 if (matched) break;
             }
             
             if (matched) {
                 updateOrderProgress();
                 renderProductTable();
-                
-                if (isChild && childInfo) {
-                    // 高亮子商品行
-                    const childRows = document.querySelectorAll(`.child-row[data-parentindex="${childInfo.parentIndex}"]`);
-                    if (childRows[childInfo.childIndex]) {
-                        childRows[childInfo.childIndex].classList.add('highlight');
-                        setTimeout(() => {
-                            childRows[childInfo.childIndex].classList.remove('highlight');
-                        }, 1000);
-                    }
-                } else if (matchedIndex !== -1) {
-                    highlightRow(matchedIndex);
-                }
-                
-                showAlert(translations[currentLang].alerts.scanSuccess.replace('{productId}', matchedProduct.productId || matchedProduct.skuId), 'success');
-                
+                highlightRow(matchedIndex);
+                showAlert(translations[currentLang].alerts.scanSuccess.replace('{productId}', matchedProduct.productId || matchedProduct.skuId || matchedProduct.bomProductId), 'success');
                 checkAllProductsCompleted();
             } else {
                 showAlert(translations[currentLang].alerts.noMatchingProduct.replace('{barcode}', barcode), 'error');
             }
         }
 
-        // 高亮行
         function highlightRow(index) {
-            const rows = productTableBody.querySelectorAll('.product-row');
-            rows.forEach(row => row.classList.remove('highlight'));
-            
+            const rows = productTableBody.querySelectorAll('.product-row:not(.child-row)');
             if (rows[index]) {
                 rows[index].classList.add('highlight');
-                setTimeout(() => {
-                    rows[index].classList.remove('highlight');
-                }, 1000);
+                setTimeout(() => rows[index].classList.remove('highlight'), 1000);
             }
         }
 
-        // 完成订单
         function completeOrder(options = {}) {
-            if (!currentOrder) return;
-
-            const isForced = options.forced === true;
-            
             currentOrder.scanTime = new Date().toLocaleString();
             currentOrder.status = 'completed';
             currentOrder.scanProgress = 100;
+            scanResults[currentOrder.waybill] = { ...currentOrder };
+            orderData[currentOrder.waybill] = { ...currentOrder };
             
-            scanResults[currentOrder.waybill] = {
-                ...currentOrder
-            };
-            
-            orderData[currentOrder.waybill] = {
-                ...currentOrder
-            };
-            
-            const completeMessageKey = isForced ? 'forceCompleteSuccess' : 'scanComplete';
-            showAlert(translations[currentLang].alerts[completeMessageKey].replace('{waybill}', currentOrder.waybill), 'success');
+            showAlert(translations[currentLang].alerts[options.forced ? 'forceCompleteSuccess' : 'scanComplete'].replace('{waybill}', currentOrder.waybill), 'success');
             
             updateResultsTables();
             updateStats();
             saveToLocalStorage();
-            
-            // 清空并重置
-            setTimeout(() => {
-                resetPage();
-            }, 2000);
+            setTimeout(resetPage, 2000);
         }
 
-        // 重置页面
-        function resetPage() {
-            currentOrder = null;
-            currentOrderId = '';
-            
-            document.getElementById('orderContent').innerHTML = `<div class="empty-state"><span data-i18n="order.scanFirst"></span></div>`;
-            
+        function resetState() {
             orderInput.value = '';
             orderInput.disabled = false;
             barcodeInput.value = '';
             barcodeInput.disabled = true;
             resetOrderBtn.disabled = true;
             forceCompleteBtn.disabled = true;
-            
-            productTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;"><span data-i18n="order.scanFirst"></span></td></tr>';
-            
             orderInput.focus();
         }
 
-        resetOrderBtn.addEventListener('click', function() {
-            if (!currentOrder) {
-                return;
-            }
+        function resetPage() {
+            currentOrder = null;
+            currentOrderId = '';
+            document.getElementById('orderContent').innerHTML = `<div class="empty-state"><span data-i18n="order.scanFirst"></span></div>`;
+            productTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;"><span data-i18n="order.scanFirst"></span></td></tr>';
+            resetState();
+            updatePlaceholders();
+        }
 
+        resetOrderBtn.addEventListener('click', function() {
+            if (!currentOrder) return;
             const waybill = currentOrder.waybill;
             resetPage();
             updateResultsTables();
@@ -2088,214 +1773,102 @@
         });
 
         forceCompleteBtn.addEventListener('click', function() {
-            if (!currentOrder) {
-                return;
+            if (currentOrder && confirm(translations[currentLang].confirm.forceComplete)) {
+                completeOrder({ forced: true });
             }
-
-            if (!confirm(translations[currentLang].confirm.forceComplete)) {
-                return;
-            }
-
-            completeOrder({ forced: true });
         });
 
-        // 结果标签切换
+        // 结果和统计报表
         const resultTabs = document.querySelectorAll('.results-tab');
         resultTabs.forEach(tab => {
             tab.addEventListener('click', function() {
                 resultTabs.forEach(t => t.classList.remove('active'));
                 document.querySelectorAll('.results-content').forEach(c => c.classList.remove('active'));
-                
                 this.classList.add('active');
-                const tabName = this.dataset.tab;
-                const content = document.getElementById(tabName + 'Content');
-                if (content) {
-                    content.classList.add('active');
-                }
-                
+                const content = document.getElementById(this.dataset.tab + 'Content');
+                if (content) content.classList.add('active');
                 updateResultsTables();
             });
         });
 
-        // 更新结果表格
         function updateResultsTables() {
-            updateCorrectTable();
-            updatePendingTable();
-        }
-
-        // 更新正确扫描表格
-        function updateCorrectTable() {
-            const tbody = document.querySelector('#correctTable tbody');
-            tbody.innerHTML = '';
+            const correctTbody = document.querySelector('#correctTable tbody');
+            const pendingTbody = document.querySelector('#pendingTable tbody');
+            correctTbody.innerHTML = '';
+            pendingTbody.innerHTML = '';
             
-            const correctOrders = Object.values(scanResults).filter(order => order.status === 'completed');
+            const allOrders = { ...orderData, ...scanResults };
+            if (currentOrder && currentOrder.waybill) allOrders[currentOrder.waybill] = currentOrder;
+            
+            const correctOrders = Object.values(allOrders).filter(o => o.status === 'completed');
+            const pendingOrders = Object.values(allOrders).filter(o => o.status !== 'completed');
             
             if (correctOrders.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;"><span data-i18n="results.noSuccessful"></span></td></tr>`;
-                return;
+                correctTbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;"><span data-i18n="results.noSuccessful"></span></td></tr>`;
+            } else {
+                correctOrders.forEach(order => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><strong>${order.waybill}</strong></td>
+                        <td>${order.orderId || '-'}</td>
+                        <td>${formatDateTime(order.orderDate, order.orderTime) || '-'}</td>
+                        <td>${formatScanTime(order.scanTime) || '-'}</td>
+                        <td><span class="status-correct" data-i18n="results.completed"></span></td>
+                    `;
+                    correctTbody.appendChild(row);
+                });
             }
-            
-            correctOrders.forEach(order => {
-                const row = document.createElement('tr');
-                const orderDateTime = formatDateTime(order.orderDate, order.orderTime);
-                // 格式化扫描时间
-                const formattedScanTime = formatScanTime(order.scanTime);
-                row.innerHTML = `
-                    <td><strong>${order.waybill}</strong></td>
-                    <td>${order.orderId || '-'}</td>
-                    <td>${orderDateTime || '-'}</td>
-                    <td>${formattedScanTime || '-'}</td>
-                    <td><span class="status-correct" data-i18n="results.completed"></span></td>
-                `;
-                tbody.appendChild(row);
-            });
-            
-            // 更新占位符
-            updatePlaceholders();
-        }
-
-        // 更新待处理表格
-        function updatePendingTable() {
-            const tbody = document.querySelector('#pendingTable tbody');
-            tbody.innerHTML = '';
-            
-            // 合并orderData和scanResults中的订单
-            const allOrders = {};
-            
-            // 首先添加orderData中的所有订单
-            for (const waybill in orderData) {
-                allOrders[waybill] = {
-                    ...orderData[waybill],
-                    status: orderData[waybill].status || 'pending',
-                    scanProgress: orderData[waybill].scanProgress || 0,
-                    scanTime: orderData[waybill].scanTime || null
-                };
-            }
-            
-            // 然后用scanResults中的订单覆盖，保留已有的扫描进度
-            for (const waybill in scanResults) {
-                allOrders[waybill] = {
-                    ...allOrders[waybill],
-                    ...scanResults[waybill]
-                };
-            }
-            
-            // 包含当前正在处理的订单
-            if (currentOrder && currentOrder.waybill) {
-                allOrders[currentOrder.waybill] = currentOrder;
-            }
-            
-            // 过滤出待处理订单
-            const pendingOrders = Object.values(allOrders).filter(order => order.status === 'pending');
             
             if (pendingOrders.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;"><span data-i18n="results.noPending"></span></td></tr>`;
-                return;
+                pendingTbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;"><span data-i18n="results.noPending"></span></td></tr>`;
+            } else {
+                pendingOrders.forEach(order => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><strong>${order.waybill}</strong></td>
+                        <td>${order.orderId || '-'}</td>
+                        <td>${formatDateTime(order.orderDate, order.orderTime) || '-'}</td>
+                        <td>${getProductCount(order.products)}</td>
+                        <td><span class="status-pending" data-i18n="results.pending"></span></td>
+                    `;
+                    pendingTbody.appendChild(row);
+                });
             }
-            
-            pendingOrders.forEach(order => {
-                const row = document.createElement('tr');
-                const orderDateTime = formatDateTime(order.orderDate, order.orderTime);
-                row.innerHTML = `
-                    <td><strong>${order.waybill}</strong></td>
-                    <td>${order.orderId || '-'}</td>
-                    <td>${orderDateTime || '-'}</td>
-                    <td>${getProductCount(order.products)}</td>
-                    <td><span class="status-pending" data-i18n="results.pending"></span></td>
-                `;
-                tbody.appendChild(row);
-            });
-            
-            // 更新占位符
             updatePlaceholders();
         }
 
-        // 更新统计数据
         function updateStats() {
-            const allOrders = {};
+            const allOrders = { ...orderData, ...scanResults };
+            if (currentOrder && currentOrder.waybill) allOrders[currentOrder.waybill] = currentOrder;
             
-            // 计算待处理订单数量（总数减去已完成订单）
-            for (const waybill in orderData) {
-                allOrders[waybill] = {
-                    ...orderData[waybill],
-                    status: orderData[waybill].status || 'pending'
-                };
-            }
-
-            for (const waybill in scanResults) {
-                allOrders[waybill] = {
-                    ...allOrders[waybill],
-                    ...scanResults[waybill]
-                };
-            }
-
-            if (currentOrder && currentOrder.waybill) {
-                allOrders[currentOrder.waybill] = currentOrder;
-            }
-
             const orders = Object.values(allOrders);
-            const correctCount = orders.filter(order => order.status === 'completed').length;
-            const pendingCount = orders.filter(order => order.status === 'pending').length;
-            
-            const totalCount = orders.length;
-
-            correctCountEl.textContent = correctCount;
+            correctCountEl.textContent = orders.filter(o => o.status === 'completed').length;
             errorCountEl.textContent = 0;
-            pendingCountEl.textContent = pendingCount;
-            totalCountEl.textContent = totalCount;
+            pendingCountEl.textContent = orders.filter(o => o.status !== 'completed').length;
+            totalCountEl.textContent = orders.length;
         }
 
-        // 清除所有数据
         clearDataBtn.addEventListener('click', function() {
             if (confirm(translations[currentLang].confirm.clearData)) {
                 localStorage.clear();
-                orderData = {};
-                skuData = {};
-                scanResults = {};
-                currentOrder = null;
-                currentOrderId = '';
-                
-                orderStatus.textContent = translations[currentLang].upload.waiting;
-                orderStatus.className = 'upload-status';
-                skuStatus.textContent = translations[currentLang].upload.waiting;
-                skuStatus.className = 'upload-status';
-                
-                resetPage();
-                updateResultsTables();
-                updateStats();
-                
-                orderInput.disabled = true;
-                barcodeInput.disabled = true;
-                
-                orderExcelInput.value = '';
-                skuExcelInput.value = '';
-                
+                orderData = {}; skuData = {}; window.skuDict = {}; window.bomDict = {}; scanResults = {};
+                orderStatus.textContent = translations[currentLang].upload.waiting; orderStatus.className = 'upload-status';
+                skuStatus.textContent = translations[currentLang].upload.waiting; skuStatus.className = 'upload-status';
+                resetPage(); updateResultsTables(); updateStats();
+                orderInput.disabled = true; barcodeInput.disabled = true;
+                orderExcelInput.value = ''; skuExcelInput.value = '';
                 showAlert(translations[currentLang].alerts.dataCleared, 'success');
             }
         });
 
-        // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', function() {
             orderInput.disabled = true;
             barcodeInput.disabled = true;
-            
-            // 初始化默认语言
             changeLanguage('en');
-            
-            // 更新所有占位符
-            updatePlaceholders();
-            
             updateResultsTables();
             updateStats();
-            
             loadFromLocalStorage();
-            
-            // 确保光标定位到扫描订单号输入框（如果已启用）
-            setTimeout(() => {
-                if (!orderInput.disabled) {
-                    orderInput.focus();
-                }
-            }, 100);
+            setTimeout(() => { if (!orderInput.disabled) orderInput.focus(); }, 100);
         });
     </script>
 </body>
