@@ -965,6 +965,13 @@
         };
 
         // 当前语言
+        translations.en.scan.forceComplete = '✅ Force Outbound';
+        translations.yue.scan.forceComplete = '✅ 強制出庫';
+        translations.en.alerts.forceCompleteSuccess = 'Order {waybill} force outbound completed';
+        translations.yue.alerts.forceCompleteSuccess = '訂單 {waybill} 已強制出庫完成';
+        translations.en.confirm.forceComplete = 'Are you sure you want to force outbound this order?';
+        translations.yue.confirm.forceComplete = '確定要強制出庫當前訂單嗎？';
+
         let currentLang = 'en';
 
         // 更新所有占位符
@@ -1110,6 +1117,7 @@
         const orderInput = document.getElementById('orderInput');
         const barcodeInput = document.getElementById('barcodeInput');
         const resetOrderBtn = document.getElementById('resetOrderBtn');
+        const forceCompleteBtn = document.getElementById('forceCompleteBtn');
         const productTableBody = document.getElementById('productTableBody');
         const infoAlert = document.getElementById('infoAlert');
         const clearDataBtn = document.getElementById('clearDataBtn');
@@ -1518,6 +1526,7 @@
                 barcodeInput.value = '';
                 barcodeInput.disabled = true;
                 resetOrderBtn.disabled = true;
+                forceCompleteBtn.disabled = true;
                 orderInput.focus();
                 return;
             }
@@ -1560,6 +1569,7 @@
             barcodeInput.disabled = false;
             barcodeInput.focus();
             resetOrderBtn.disabled = false;
+            forceCompleteBtn.disabled = false;
             
         }
 
@@ -1700,11 +1710,14 @@
         }
 
         // 完成订单
-        function completeOrder() {
+        function completeOrder(options = {}) {
             if (!currentOrder) return;
+
+            const isForced = options.forced === true;
             
             currentOrder.scanTime = new Date().toLocaleString();
             currentOrder.status = 'completed';
+            currentOrder.scanProgress = 100;
             
             scanResults[currentOrder.waybill] = {
                 ...currentOrder
@@ -1714,7 +1727,8 @@
                 ...currentOrder
             };
             
-            showAlert(translations[currentLang].alerts.scanComplete.replace('{waybill}', currentOrder.waybill), 'success');
+            const completeMessageKey = isForced ? 'forceCompleteSuccess' : 'scanComplete';
+            showAlert(translations[currentLang].alerts[completeMessageKey].replace('{waybill}', currentOrder.waybill), 'success');
             
             updateResultsTables();
             updateStats();
@@ -1738,6 +1752,7 @@
             barcodeInput.value = '';
             barcodeInput.disabled = true;
             resetOrderBtn.disabled = true;
+            forceCompleteBtn.disabled = true;
             
             productTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;"><span data-i18n="order.scanFirst"></span></td></tr>';
             
@@ -1754,6 +1769,18 @@
             updateResultsTables();
             updateStats();
             showAlert(translations[currentLang].alerts.orderReset.replace('{waybill}', waybill), 'info');
+        });
+
+        forceCompleteBtn.addEventListener('click', function() {
+            if (!currentOrder) {
+                return;
+            }
+
+            if (!confirm(translations[currentLang].confirm.forceComplete)) {
+                return;
+            }
+
+            completeOrder({ forced: true });
         });
 
         // 结果标签切换
