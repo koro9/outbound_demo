@@ -2291,7 +2291,7 @@
             const deliveryDateTime = formatDateTime(currentOrder.deliveryDate);
             contentHtml += `<p><strong data-i18n="order.deliveryTime">:</strong> ${deliveryDateTime || ''}</p>`;
             
-            contentHtml += `<p><strong data-i18n="order.productCount">:</strong> ${currentOrder.products.length}</p>`;
+            contentHtml += `<p><strong data-i18n="order.productCount">:</strong> ${getProductCount(currentOrder.products)}</p>`;
             
             document.getElementById('orderContent').innerHTML = contentHtml;
             
@@ -2305,6 +2305,20 @@
             
             resetOrderBtn.disabled = false;
             forceCompleteBtn.disabled = false;
+        }
+
+        // 计算商品数量（BOM母商品不计入，只计算子商品）
+        function getProductCount(products) {
+            if (!products) return 0;
+            let count = 0;
+            products.forEach(p => {
+                if (p.isBom && p.children && p.children.length > 0) {
+                    count += p.children.length;
+                } else {
+                    count++;
+                }
+            });
+            return count;
         }
 
         // 渲染商品表格
@@ -2764,7 +2778,7 @@
                     <td><strong>${order.waybill}</strong></td>
                     <td>${order.orderId || '-'}</td>
                     <td>${orderDateTime || '-'}</td>
-                    <td>${order.products.length}</td>
+                    <td>${getProductCount(order.products)}</td>
                     <td><span class="status-pending" data-i18n="results.pending"></span></td>
                 `;
                 tbody.appendChild(row);
