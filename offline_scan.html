@@ -668,7 +668,6 @@
                     <label for="barcodeInput">📷 Barcode</label>
                     <input type="text" id="barcodeInput" placeholder="Scan Barcode" autocomplete="off" disabled>
                 </div>
-                <button class="btn btn-danger" id="markErrorBtn" disabled>⚠️ Error Order</button>
             </div>
             
             <div class="order-info" id="orderInfo">
@@ -707,7 +706,6 @@
             </div>
             <div class="results-tabs">
                 <div class="results-tab active" data-tab="correct">✅ Successful Orders</div>
-                <div class="results-tab" data-tab="error">❌ Error Orders</div>
                 <div class="results-tab" data-tab="pending">⏳ Pending Orders</div>
             </div>
             
@@ -725,25 +723,6 @@
                     <tbody>
                         <tr>
                             <td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;">No successful orders</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            
-            <div class="results-content" id="errorContent">
-                <table id="errorTable">
-                    <thead>
-                        <tr>
-                            <th>Waybill</th>
-                            <th>Order ID</th>
-                            <th>Order Time</th>
-                            <th>Scan Time</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;">No error orders</td>
                         </tr>
                     </tbody>
                 </table>
@@ -1026,7 +1005,6 @@
             document.getElementById('orderInput').placeholder = translations[lang].scan.scanWaybill;
             document.querySelector('label[for="barcodeInput"]').textContent = translations[lang].scan.barcode;
             document.getElementById('barcodeInput').placeholder = translations[lang].scan.scanBarcode;
-            document.getElementById('markErrorBtn').textContent = translations[lang].scan.errorOrder;
             
             // 更新订单信息
             document.querySelector('.info-label').textContent = translations[lang].order.title;
@@ -1044,10 +1022,10 @@
             document.getElementById('clearDataBtn').textContent = translations[lang].results.clearData;
             
             // 更新结果标签
-            const resultTabs = document.querySelectorAll('.results-tab');
-            resultTabs[0].textContent = translations[lang].results.successfulOrders;
-            resultTabs[1].textContent = translations[lang].results.errorOrders;
-            resultTabs[2].textContent = translations[lang].results.pendingOrders;
+            const correctTab = document.querySelector('.results-tab[data-tab="correct"]');
+            const pendingTab = document.querySelector('.results-tab[data-tab="pending"]');
+            if (correctTab) correctTab.textContent = translations[lang].results.successfulOrders;
+            if (pendingTab) pendingTab.textContent = translations[lang].results.pendingOrders;
             
             // 更新表格表头
             const correctTableHeaders = document.querySelectorAll('#correctTable th');
@@ -1056,13 +1034,6 @@
             correctTableHeaders[2].textContent = translations[lang].results.orderTime;
             correctTableHeaders[3].textContent = translations[lang].results.scanTime;
             correctTableHeaders[4].textContent = translations[lang].results.status;
-            
-            const errorTableHeaders = document.querySelectorAll('#errorTable th');
-            errorTableHeaders[0].textContent = translations[lang].results.waybill;
-            errorTableHeaders[1].textContent = translations[lang].results.orderId;
-            errorTableHeaders[2].textContent = translations[lang].results.orderTime;
-            errorTableHeaders[3].textContent = translations[lang].results.scanTime;
-            errorTableHeaders[4].textContent = translations[lang].results.status;
             
             const pendingTableHeaders = document.querySelectorAll('#pendingTable th');
             pendingTableHeaders[0].textContent = translations[lang].results.waybill;
@@ -1100,7 +1071,6 @@
         const skuStatus = document.getElementById('skuStatus');
         const orderInput = document.getElementById('orderInput');
         const barcodeInput = document.getElementById('barcodeInput');
-        const markErrorBtn = document.getElementById('markErrorBtn');
         const productTableBody = document.getElementById('productTableBody');
         const infoAlert = document.getElementById('infoAlert');
         const clearDataBtn = document.getElementById('clearDataBtn');
@@ -1538,7 +1508,6 @@
             barcodeInput.disabled = false;
             barcodeInput.focus();
             
-            markErrorBtn.disabled = false;
         }
 
         // 渲染商品表格
@@ -1704,32 +1673,6 @@
             }, 2000);
         }
 
-        // 标记错误按钮
-        markErrorBtn.addEventListener('click', function() {
-            if (!currentOrder) return;
-            
-            if (confirm(translations[currentLang].confirm.markError)) {
-                currentOrder.status = 'error';
-                currentOrder.scanTime = new Date().toLocaleString();
-                
-                scanResults[currentOrder.waybill] = {
-                    ...currentOrder
-                };
-                
-                orderData[currentOrder.waybill] = {
-                    ...currentOrder
-                };
-                
-                showAlert(translations[currentLang].alerts.orderMarkedError.replace('{waybill}', currentOrder.waybill), 'error');
-                
-                updateResultsTables();
-                updateStats();
-                saveToLocalStorage();
-                
-                resetPage();
-            }
-        });
-
         // 重置页面
         function resetPage() {
             currentOrder = null;
@@ -1741,7 +1684,6 @@
             orderInput.disabled = false;
             barcodeInput.value = '';
             barcodeInput.disabled = true;
-            markErrorBtn.disabled = true;
             
             productTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;"><span data-i18n="order.scanFirst"></span></td></tr>';
             
@@ -1757,7 +1699,10 @@
                 
                 this.classList.add('active');
                 const tabName = this.dataset.tab;
-                document.getElementById(tabName + 'Content').classList.add('active');
+                const content = document.getElementById(tabName + 'Content');
+                if (content) {
+                    content.classList.add('active');
+                }
                 
                 updateResultsTables();
             });
@@ -1766,7 +1711,6 @@
         // 更新结果表格
         function updateResultsTables() {
             updateCorrectTable();
-            updateErrorTable();
             updatePendingTable();
         }
 
@@ -1793,37 +1737,6 @@
                     <td>${orderDateTime || '-'}</td>
                     <td>${formattedScanTime || '-'}</td>
                     <td><span class="status-correct" data-i18n="results.completed"></span></td>
-                `;
-                tbody.appendChild(row);
-            });
-            
-            // 更新占位符
-            updatePlaceholders();
-        }
-
-        // 更新错误扫描表格
-        function updateErrorTable() {
-            const tbody = document.querySelector('#errorTable tbody');
-            tbody.innerHTML = '';
-            
-            const errorOrders = Object.values(scanResults).filter(order => order.status === 'error');
-            
-            if (errorOrders.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;"><span data-i18n="results.noError"></span></td></tr>`;
-                return;
-            }
-            
-            errorOrders.forEach(order => {
-                const row = document.createElement('tr');
-                const orderDateTime = formatDateTime(order.orderDate, order.orderTime);
-                // 格式化扫描时间
-                const formattedScanTime = formatScanTime(order.scanTime);
-                row.innerHTML = `
-                    <td><strong>${order.waybill}</strong></td>
-                    <td>${order.orderId || '-'}</td>
-                    <td>${orderDateTime || '-'}</td>
-                    <td>${formattedScanTime || '-'}</td>
-                    <td><span class="status-error" data-i18n="results.error"></span></td>
                 `;
                 tbody.appendChild(row);
             });
@@ -1864,7 +1777,7 @@
             }
             
             // 过滤出待处理订单
-            const pendingOrders = Object.values(allOrders).filter(order => order.status !== 'completed' && order.status !== 'error');
+            const pendingOrders = Object.values(allOrders).filter(order => order.status !== 'completed');
             
             if (pendingOrders.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 40px; color: #a0aec0;"><span data-i18n="results.noPending"></span></td></tr>`;
@@ -1891,16 +1804,14 @@
         // 更新统计数据
         function updateStats() {
             const correctCount = Object.values(scanResults).filter(order => order.status === 'completed').length;
-            const errorCount = Object.values(scanResults).filter(order => order.status === 'error').length;
             
-            // 计算待处理订单数量（包括orderData中的所有订单，减去已完成和错误的订单）
-            const completedAndErrorCount = correctCount + errorCount;
-            const pendingCount = Object.keys(orderData).length - completedAndErrorCount;
+            // 计算待处理订单数量（总数减去已完成订单）
+            const pendingCount = Object.keys(orderData).length - correctCount;
             
             const totalCount = Object.keys(orderData).length;
 
             correctCountEl.textContent = correctCount;
-            errorCountEl.textContent = errorCount;
+            errorCountEl.textContent = 0;
             pendingCountEl.textContent = pendingCount;
             totalCountEl.textContent = totalCount;
         }
@@ -1926,7 +1837,6 @@
                 
                 orderInput.disabled = true;
                 barcodeInput.disabled = true;
-                markErrorBtn.disabled = true;
                 
                 orderExcelInput.value = '';
                 skuExcelInput.value = '';
@@ -1939,7 +1849,6 @@
         document.addEventListener('DOMContentLoaded', function() {
             orderInput.disabled = true;
             barcodeInput.disabled = true;
-            markErrorBtn.disabled = true;
             
             // 初始化默认语言
             changeLanguage('en');
