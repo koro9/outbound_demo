@@ -1254,8 +1254,19 @@
             }
 
             const label = labelData[barcode];
-            const printWindow = window.open('', '_blank');
-            printWindow.document.open();
+            const printFrame = document.createElement('iframe');
+            printFrame.style.position = 'fixed';
+            printFrame.style.right = '0';
+            printFrame.style.bottom = '0';
+            printFrame.style.width = '0';
+            printFrame.style.height = '0';
+            printFrame.style.border = '0';
+            printFrame.style.visibility = 'hidden';
+            document.body.appendChild(printFrame);
+
+            const frameWindow = printFrame.contentWindow;
+            const frameDocument = frameWindow.document;
+            frameDocument.open();
             
             let printContent = `
                 <!DOCTYPE html>
@@ -1350,19 +1361,38 @@
                 </html>
             `;
             
-            printWindow.document.write(printContent);
-            printWindow.document.close();
-            printWindow.onload = function() {
+            frameDocument.write(printContent);
+            frameDocument.close();
+
+            let cleaned = false;
+            const cleanupPrintFrame = () => {
+                if (cleaned) return;
+                cleaned = true;
+                window.focus();
+                setTimeout(() => {
+                    if (printFrame.parentNode) {
+                        printFrame.parentNode.removeChild(printFrame);
+                    }
+                }, 0);
+            };
+
+            const startPrint = () => {
                 try {
-                    printWindow.print();
-                    setTimeout(() => {
-                        printWindow.close();
-                    }, 500);
+                    frameWindow.onafterprint = cleanupPrintFrame;
+                    frameWindow.focus();
+                    frameWindow.print();
+                    setTimeout(cleanupPrintFrame, 1000);
                 } catch (error) {
                     showToast('Printing failed: No printer detected', 'error');
-                    printWindow.close();
+                    cleanupPrintFrame();
                 }
             };
+
+            if (frameDocument.readyState === 'complete') {
+                setTimeout(startPrint, 50);
+            } else {
+                printFrame.onload = startPrint;
+            }
         }
 
         document.getElementById('printBtn').addEventListener('click', function() {

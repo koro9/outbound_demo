@@ -819,6 +819,7 @@
                     orderLoaded: 'Order loaded successfully, please scan product barcode',
                     scanSuccess: 'Scan successful: {productId}',
                     productSufficient: 'Product {productId} already sufficient',
+                    outboundQtyExceeded: 'Outbound quantity cannot exceed order quantity',
                     noMatchingProduct: 'No matching product found: {barcode}',
                     scanComplete: 'Order {waybill} outbound completed',
                     orderMarkedError: 'Order {waybill} marked as error',
@@ -876,6 +877,7 @@
                     orderLoaded: '訂單加載成功，請掃描商品條碼',
                     scanSuccess: '掃描成功: {productId}',
                     productSufficient: '商品 {productId} 已經足夠',
+                    outboundQtyExceeded: '出庫數量不能超過訂單數量',
                     noMatchingProduct: '未找到匹配的商品: {barcode}',
                     scanComplete: '訂單 {waybill} 出庫完成',
                     orderMarkedError: '訂單 {waybill} 已標記為錯誤',
@@ -1587,13 +1589,14 @@
             let matched = false;
             let matchedProduct = null;
             let matchedIndex = -1;
+            let blockedByQuantity = false;
             
             for (let i = 0; i < currentOrder.products.length; i++) {
                 const product = currentOrder.products[i];
                 if (product.isBom && product.children) {
                     if (product.bomBarcode === barcode) {
                         if (isBomProductCompleted(product) || (product.scanQty || 0) >= product.quantity) {
-                            showAlert(translations[currentLang].alerts.productSufficient.replace('{productId}', product.bomProductId), 'info');
+                            blockedByQuantity = true;
                         } else {
                             product.scanQty = (product.scanQty || 0) + 1;
                             matchedProduct = product;
@@ -1606,7 +1609,7 @@
                         const child = product.children[j];
                         if (child.barcode === barcode) {
                             if (getBomChildFulfilledQty(product, child) >= getBomChildTargetQty(product, child)) {
-                                showAlert(translations[currentLang].alerts.productSufficient.replace('{productId}', child.skuId), 'info');
+                                blockedByQuantity = true;
                             } else {
                                 child.scanQty = (child.scanQty || 0) + 1;
                                 matchedProduct = child;
@@ -1619,7 +1622,7 @@
                 } else if (!product.isBom) {
                     if (product.barcode === barcode) {
                         if (product.scanQty >= product.quantity) {
-                            showAlert(translations[currentLang].alerts.productSufficient.replace('{productId}', product.productId), 'info');
+                            blockedByQuantity = true;
                         } else {
                             product.scanQty++;
                             matchedProduct = product;
@@ -1629,7 +1632,13 @@
                         break;
                     }
                 }
+                if (blockedByQuantity) break;
                 if (matched) break;
+            }
+
+            if (blockedByQuantity) {
+                showAlert(translations[currentLang].alerts.outboundQtyExceeded, 'info');
+                return;
             }
             
             if (matched) {

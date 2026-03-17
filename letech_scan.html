@@ -1201,6 +1201,7 @@
                     orderLoaded: 'Order loaded successfully, please scan product barcode',
                     scanSuccess: 'Scan successful: {productId}',
                     productSufficient: 'Product {productId} already sufficient',
+                    outboundQtyExceeded: 'Outbound quantity cannot exceed order quantity',
                     noMatchingProduct: 'No matching product found: {barcode}',
                     scanComplete: 'Order {waybill} scan completed',
                     orderMarkedError: 'Order {waybill} marked as error',
@@ -1291,6 +1292,7 @@
                     orderLoaded: '訂單加載成功，請掃描商品條碼',
                     scanSuccess: '掃描成功: {productId}',
                     productSufficient: '商品 {productId} 已經足夠',
+                    outboundQtyExceeded: '出庫數量不能超過訂單數量',
                     noMatchingProduct: '未找到匹配的商品: {barcode}',
                     scanComplete: '訂單 {waybill} 掃描完成',
                     orderMarkedError: '訂單 {waybill} 已標記為錯誤',
@@ -2754,6 +2756,7 @@
             let isChild = false;
             let childInfo = null;
             let didAutoPrint = false;
+            let blockedByQuantity = false;
             
             // 遍历所有母商品
             for (let i = 0; i < currentOrder.products.length; i++) {
@@ -2765,7 +2768,7 @@
                     if (parentBarcode === barcode) {
                         const parentQty = product.quantity || product.bomComboQty || 1;
                         if ((product.scanQty || 0) >= parentQty || isBomProductCompleted(product)) {
-                            showAlert(translations[currentLang].alerts.productSufficient.replace('{productId}', product.bomProductId || product.productId), 'info');
+                            blockedByQuantity = true;
                         } else {
                             product.scanQty = (product.scanQty || 0) + 1;
                             matchedProduct = product;
@@ -2781,7 +2784,7 @@
                             const childQuantity = getBomChildTargetQty(product, child);
                             const fulfilledQty = getBomChildFulfilledQty(product, child);
                             if (fulfilledQty >= childQuantity) {
-                                showAlert(translations[currentLang].alerts.productSufficient.replace('{productId}', child.skuId), 'info');
+                                blockedByQuantity = true;
                             } else {
                                 child.scanQty = (child.scanQty || 0) + 1;
                                 matchedProduct = child;
@@ -2797,7 +2800,7 @@
                     // 非组合商品可以直接扫描
                     if (product.barcode === barcode) {
                         if (product.scanQty >= product.quantity) {
-                            showAlert(translations[currentLang].alerts.productSufficient.replace('{productId}', product.productId), 'info');
+                            blockedByQuantity = true;
                         } else {
                             product.scanQty++;
                             matchedProduct = product;
@@ -2808,7 +2811,18 @@
                     }
                 }
                 
+                if (blockedByQuantity) break;
                 if (matched) break;
+            }
+
+            if (blockedByQuantity) {
+                showAlert(translations[currentLang].alerts.outboundQtyExceeded, 'info');
+
+                // 超量扫码不计数不走出库流程，但仍保留自动打印能力
+                if (autoPrintToggle.checked && labelData[barcode]) {
+                    printLabel(barcode);
+                }
+                return;
             }
             
             if (matched) {
@@ -3097,9 +3111,20 @@
             
             const label = labelData[barcode];
             
-            // 创建打印窗口
-            const printWindow = window.open('', '_blank');
-            printWindow.document.open();
+            // 使用隐藏 iframe 打印，避免新开页面
+            const printFrame = document.createElement('iframe');
+            printFrame.style.position = 'fixed';
+            printFrame.style.right = '0';
+            printFrame.style.bottom = '0';
+            printFrame.style.width = '0';
+            printFrame.style.height = '0';
+            printFrame.style.border = '0';
+            printFrame.style.visibility = 'hidden';
+            document.body.appendChild(printFrame);
+
+            const frameWindow = printFrame.contentWindow;
+            const frameDocument = frameWindow.document;
+            frameDocument.open();
             
             let printContent = `
                 <!DOCTYPE html>
@@ -3197,23 +3222,38 @@
                 </html>
             `;
             
-            printWindow.document.write(printContent);
-            printWindow.document.close();
-            
-            // 等待窗口加载完成后打印
-            printWindow.onload = function() {
+            frameDocument.write(printContent);
+            frameDocument.close();
+
+            let cleaned = false;
+            const cleanupPrintFrame = () => {
+                if (cleaned) return;
+                cleaned = true;
+                window.focus();
+                setTimeout(() => {
+                    if (printFrame.parentNode) {
+                        printFrame.parentNode.removeChild(printFrame);
+                    }
+                }, 0);
+            };
+
+            const startPrint = () => {
                 try {
-                    // 尝试打印
-                    printWindow.print();
-                    // 打印后关闭窗口
-                    setTimeout(() => {
-                        printWindow.close();
-                    }, 500);
+                    frameWindow.onafterprint = cleanupPrintFrame;
+                    frameWindow.focus();
+                    frameWindow.print();
+                    setTimeout(cleanupPrintFrame, 1000);
                 } catch (error) {
                     showAlert('Printing failed: No printer detected', 'error');
-                    printWindow.close();
+                    cleanupPrintFrame();
                 }
             };
+
+            if (frameDocument.readyState === 'complete') {
+                setTimeout(startPrint, 50);
+            } else {
+                printFrame.onload = startPrint;
+            }
         }
 
         // 获取标签类型
