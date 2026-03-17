@@ -342,7 +342,7 @@
             padding: 16px;
             text-align: left;
             font-size: 15px;
-            white-space: nowrap; /* 表头不换行 */
+            white-space: nowrap;
         }
 
         td {
@@ -351,34 +351,32 @@
             color: #4a5568;
         }
 
-        /* 商品列表列宽度和样式 */
-        #productTable th:first-child, /* 商品ID列 */
+        #productTable th:first-child,
         #productTable td:first-child {
-            width: 180px; /* 增加宽度，确保15个字符不换行 */
+            width: 180px;
             white-space: nowrap;
         }
 
-        #productTable th:nth-child(2), /* 商品名称列 */
+        #productTable th:nth-child(2),
         #productTable td:nth-child(2) {
-            /* 自适应宽度，有多少空间就展示多少 */
             white-space: normal;
             line-height: 1.4;
             display: -webkit-box;
-            -webkit-line-clamp: 2; /* 最多显示2行 */
+            -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
-        #productTable th:nth-child(3), /* Barcode列 */
+        #productTable th:nth-child(3),
         #productTable td:nth-child(3) {
-            width: 180px; /* 增加宽度，确保15个字符不换行 */
+            width: 180px;
             white-space: nowrap;
         }
 
-        #productTable th:nth-child(4), /* 商品数量列 */
+        #productTable th:nth-child(4),
         #productTable td:nth-child(4),
-        #productTable th:nth-child(5), /* 扫描数量列 */
+        #productTable th:nth-child(5),
         #productTable td:nth-child(5) {
             width: 100px;
             text-align: center;
@@ -782,77 +780,44 @@
     </div>
 
     <script>
-        // --- 字典数据中心 (修复的核心逻辑) ---
         window.bomDict = {}; // 存储 BOM 映射关系
         window.skuDict = {}; // 存储纯净的 SKU 到 Barcode 映射
 
-        // 语言映射
         const translations = {
             en: {
                 pageTitle: 'Offline Scanning System',
                 header: '📦 Offline Scanning System',
-                stats: {
-                    success: 'Success',
-                    error: 'Error',
-                    pending: 'Pending',
-                    total: 'Total'
-                },
+                stats: { success: 'Success', error: 'Error', pending: 'Pending', total: 'Total' },
                 upload: {
-                    orderFile: '📋 Upload Order File',
-                    skuFile: '📦 Upload SKU List File',
-                    chooseFile: 'Choose File',
-                    waiting: 'Waiting for upload...',
-                    success: 'Upload successful',
-                    failed: 'Upload failed',
-                    ordersLoaded: 'orders loaded',
-                    skusLoaded: 'SKUs loaded'
+                    orderFile: '📋 Upload Order File', skuFile: '📦 Upload SKU List File',
+                    chooseFile: 'Choose File', waiting: 'Waiting for upload...',
+                    success: 'Upload successful', failed: 'Upload failed',
+                    ordersLoaded: 'orders loaded', skusLoaded: 'SKUs loaded'
                 },
                 infoAlert: 'Please upload order Excel and SKU list Excel files first, then start scanning.',
                 scan: {
-                    waybill: '🔍 Waybill',
-                    scanWaybill: 'Scan Waybill',
-                    barcode: '📷 Barcode',
-                    scanBarcode: 'Scan Barcode',
-                    errorOrder: '⚠️ Error Order',
-                    resetOrder: '🔄 Reset Order'
+                    waybill: '🔍 Waybill', scanWaybill: 'Scan Waybill',
+                    barcode: '📷 Barcode', scanBarcode: 'Scan Barcode',
+                    errorOrder: '⚠️ Error Order', resetOrder: '🔄 Reset Order'
                 },
                 order: {
-                    title: 'Order',
-                    scanFirst: 'Please scan waybill first',
-                    waybill: 'Waybill',
-                    orderId: 'Order ID',
-                    orderTime: 'Order Time',
-                    pickupTime: 'Pickup Time',
-                    deliveryTime: 'Delivery Time',
-                    productCount: 'Product Count',
-                    notSet: 'Not set'
+                    title: 'Order', scanFirst: 'Please scan waybill first',
+                    waybill: 'Waybill', orderId: 'Order ID', orderTime: 'Order Time',
+                    pickupTime: 'Pickup Time', deliveryTime: 'Delivery Time',
+                    productCount: 'Product Count', notSet: 'Not set'
                 },
                 productTable: {
-                    productId: 'Product ID',
-                    productName: 'Product Name',
-                    barcode: 'Barcode',
-                    quantity: 'Quantity',
-                    scanQuantity: 'Scan Quantity',
+                    productId: 'Product ID', productName: 'Product Name',
+                    barcode: 'Barcode', quantity: 'Quantity', scanQuantity: 'Scan Quantity',
                     noData: 'No product data'
                 },
                 results: {
-                    title: '📊 Scan Results',
-                    clearData: '🗑️ Clear All Data',
-                    successfulOrders: '✅ Successful Orders',
-                    errorOrders: '❌ Error Orders',
-                    pendingOrders: '⏳ Pending Orders',
-                    waybill: 'Waybill',
-                    orderId: 'Order ID',
-                    orderTime: 'Order Time',
-                    scanTime: 'Scan Time',
-                    productCount: 'Product Count',
-                    status: 'Status',
-                    noSuccessful: 'No successful orders',
-                    noError: 'No error orders',
-                    noPending: 'No pending orders',
-                    completed: 'Completed',
-                    error: 'Error',
-                    pending: 'Pending'
+                    title: '📊 Scan Results', clearData: '🗑️ Clear All Data',
+                    successfulOrders: '✅ Successful Orders', errorOrders: '❌ Error Orders',
+                    pendingOrders: '⏳ Pending Orders', waybill: 'Waybill', orderId: 'Order ID',
+                    orderTime: 'Order Time', scanTime: 'Scan Time', productCount: 'Product Count',
+                    status: 'Status', noSuccessful: 'No successful orders', noError: 'No error orders',
+                    noPending: 'No pending orders', completed: 'Completed', error: 'Error', pending: 'Pending'
                 },
                 alerts: {
                     orderLoaded: 'Order loaded successfully, please scan product barcode',
@@ -879,68 +844,37 @@
             yue: {
                 pageTitle: '離線掃描系統',
                 header: '📦 離線掃描系統',
-                stats: {
-                    success: '成功',
-                    error: '錯誤',
-                    pending: '待處理',
-                    total: '總計'
-                },
+                stats: { success: '成功', error: '錯誤', pending: '待處理', total: '總計' },
                 upload: {
-                    orderFile: '📋 上傳訂單文件',
-                    skuFile: '📦 上傳SKU文件',
-                    chooseFile: '選擇文件',
-                    waiting: '等待上傳...',
-                    success: '上傳成功',
-                    failed: '上傳失敗',
-                    ordersLoaded: '個訂單已加載',
-                    skusLoaded: '個SKU已加載'
+                    orderFile: '📋 上傳訂單文件', skuFile: '📦 上傳SKU文件',
+                    chooseFile: '選擇文件', waiting: '等待上傳...',
+                    success: '上傳成功', failed: '上傳失敗',
+                    ordersLoaded: '個訂單已加載', skusLoaded: '個SKU已加載'
                 },
                 infoAlert: '請先上傳訂單Excel和SKU列表Excel文件，然後開始掃描。',
                 scan: {
-                    waybill: '🔍 運單號',
-                    scanWaybill: '掃描運單號',
-                    barcode: '📷 商品條碼',
-                    scanBarcode: '掃描商品條碼',
-                    errorOrder: '⚠️ 異常訂單',
-                    resetOrder: '🔄 重置訂單'
+                    waybill: '🔍 運單號', scanWaybill: '掃描運單號',
+                    barcode: '📷 商品條碼', scanBarcode: '掃描商品條碼',
+                    errorOrder: '⚠️ 異常訂單', resetOrder: '🔄 重置訂單'
                 },
                 order: {
-                    title: '訂單信息',
-                    scanFirst: '請先掃描運單號',
-                    waybill: '運單號',
-                    orderId: '訂單號',
-                    orderTime: '訂單時間',
-                    pickupTime: '打包時間',
-                    deliveryTime: '配送時間',
-                    productCount: '商品數量',
-                    notSet: '未設定'
+                    title: '訂單信息', scanFirst: '請先掃描運單號',
+                    waybill: '運單號', orderId: '訂單號', orderTime: '訂單時間',
+                    pickupTime: '打包時間', deliveryTime: '配送時間',
+                    productCount: '商品數量', notSet: '未設定'
                 },
                 productTable: {
-                    productId: '商品ID',
-                    productName: '商品名稱',
-                    barcode: 'Barcode',
-                    quantity: '商品數量',
-                    scanQuantity: '掃描數量',
+                    productId: '商品ID', productName: '商品名稱',
+                    barcode: 'Barcode', quantity: '商品數量', scanQuantity: '掃描數量',
                     noData: '暫無商品數據'
                 },
                 results: {
-                    title: '📊 掃描結果',
-                    clearData: '🗑️ 清空所有數據',
-                    successfulOrders: '✅ 成功訂單',
-                    errorOrders: '❌ 異常訂單',
-                    pendingOrders: '⏳ 待處理訂單',
-                    waybill: '運單號',
-                    orderId: '訂單號',
-                    orderTime: '訂單時間',
-                    scanTime: '掃描時間',
-                    productCount: '商品數量',
-                    status: '狀態',
-                    noSuccessful: '無成功訂單',
-                    noError: '無異常訂單',
-                    noPending: '無待處理訂單',
-                    completed: '已完成',
-                    error: '錯誤',
-                    pending: '待處理'
+                    title: '📊 掃描結果', clearData: '🗑️ 清空所有數據',
+                    successfulOrders: '✅ 成功訂單', errorOrders: '❌ 異常訂單',
+                    pendingOrders: '⏳ 待處理訂單', waybill: '運單號', orderId: '訂單號',
+                    orderTime: '訂單時間', scanTime: '掃描時間', productCount: '商品數量',
+                    status: '狀態', noSuccessful: '無成功訂單', noError: '無異常訂單',
+                    noPending: '無待處理訂單', completed: '已完成', error: '錯誤', pending: '待處理'
                 },
                 alerts: {
                     orderLoaded: '訂單加載成功，請掃描商品條碼',
@@ -966,7 +900,6 @@
             }
         };
 
-        // 当前语言补充
         translations.en.scan.forceComplete = '✅ Force Outbound';
         translations.yue.scan.forceComplete = '✅ 強制出庫';
         translations.en.alerts.forceCompleteSuccess = 'Order {waybill} force outbound completed';
@@ -976,13 +909,11 @@
 
         let currentLang = 'en';
 
-        // 更新所有占位符
         function updatePlaceholders() {
             document.querySelectorAll('[data-i18n]').forEach(element => {
                 const key = element.dataset.i18n;
                 const keys = key.split('.');
                 let value = translations[currentLang];
-                
                 for (const k of keys) {
                     if (value && value[k]) {
                         value = value[k];
@@ -991,7 +922,6 @@
                         break;
                     }
                 }
-                
                 if (element.tagName === 'STRONG') {
                     const colon = element.textContent.includes(':') ? ':' : '';
                     element.textContent = value + colon;
@@ -1001,15 +931,11 @@
             });
         }
 
-        // 切换语言
         function changeLanguage(lang) {
             currentLang = lang;
-            
             document.querySelectorAll('.lang-btn').forEach(btn => {
                 btn.classList.remove('active');
-                if (btn.dataset.lang === lang) {
-                    btn.classList.add('active');
-                }
+                if (btn.dataset.lang === lang) btn.classList.add('active');
             });
             
             document.title = translations[lang].pageTitle;
@@ -1034,7 +960,7 @@
             }
             
             if (skuStatusEl.classList.contains('success') && Object.keys(skuData).length > 0) {
-                const skuCount = Object.keys(window.skuDict).length; // 使用精确的条码数
+                const skuCount = Object.keys(window.skuDict).length;
                 skuStatusEl.textContent = `${translations[lang].upload.success}, ${skuCount} ${translations[lang].upload.skusLoaded}`;
             } else {
                 skuStatusEl.textContent = translations[lang].upload.waiting;
@@ -1081,19 +1007,15 @@
         }
 
         document.querySelectorAll('.lang-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                changeLanguage(this.dataset.lang);
-            });
+            btn.addEventListener('click', function() { changeLanguage(this.dataset.lang); });
         });
 
-        // 全局数据存储
-        let orderData = {};      // 订单数据
-        let skuData = {};        // SKU数据 (保留用于兼容UI的状态显示)
-        let currentOrder = null; // 当前订单
-        let scanResults = {};    // 扫描结果
-        let currentOrderId = ''; // 当前订单ID
+        let orderData = {};
+        let skuData = {};
+        let currentOrder = null;
+        let scanResults = {};
+        let currentOrderId = '';
 
-        // DOM元素
         const orderExcelInput = document.getElementById('orderExcel');
         const skuExcelInput = document.getElementById('skuExcel');
         const orderStatus = document.getElementById('orderStatus');
@@ -1111,7 +1033,6 @@
         const pendingCountEl = document.getElementById('pendingCount');
         const totalCountEl = document.getElementById('totalCount');
 
-        // 从localStorage加载数据
         function loadFromLocalStorage() {
             try {
                 const savedOrderData = localStorage.getItem('offlineScan_orderData');
@@ -1126,15 +1047,13 @@
 
                 if (savedSkuData) {
                     const parsed = JSON.parse(savedSkuData);
-                    // 适配新的存储结构
                     if (parsed.bomDict && parsed.skuDict) {
                         window.bomDict = parsed.bomDict;
                         window.skuDict = parsed.skuDict;
-                        skuData = parsed; // 为了过前面的校验
+                        skuData = parsed;
                         skuStatus.textContent = `Loaded from cache, ${Object.keys(window.skuDict).length} SKUs`;
                         skuStatus.className = 'upload-status success';
                     } else {
-                        // 旧格式缓存，清除并要求重新上传
                         localStorage.removeItem('offlineScan_skuData');
                         skuStatus.textContent = translations[currentLang].upload.waiting;
                         skuStatus.className = 'upload-status';
@@ -1162,7 +1081,6 @@
             }
         }
 
-        // 保存数据到localStorage
         function saveToLocalStorage() {
             try {
                 localStorage.setItem('offlineScan_orderData', JSON.stringify(orderData));
@@ -1177,7 +1095,6 @@
             }
         }
 
-        // 上传订单文件
         orderExcelInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
@@ -1197,6 +1114,7 @@
                         showAlert(translations[currentLang].alerts.orderFileUploaded, 'success');
                         saveToLocalStorage();
                         checkFilesReady();
+                        updateResultsTables(); 
                     } catch (error) {
                         orderStatus.textContent = 'Upload failed: ' + error.message;
                         orderStatus.className = 'upload-status error';
@@ -1207,7 +1125,6 @@
             }
         });
 
-        // 上传SKU文件
         skuExcelInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
@@ -1227,6 +1144,7 @@
                         showAlert(translations[currentLang].alerts.skuFileUploaded, 'success');
                         saveToLocalStorage();
                         checkFilesReady();
+                        updateResultsTables(); 
                     } catch (error) {
                         skuStatus.textContent = 'Upload failed: ' + error.message;
                         skuStatus.className = 'upload-status error';
@@ -1237,7 +1155,6 @@
             }
         });
 
-        // 🟢【核心逻辑重写 1】处理订单数据并获取纯净 SKU
         function processOrderData(data) {
             if (data.length < 2) return;
             const headers = data[0];
@@ -1282,13 +1199,12 @@
                     };
                 }
                 
-                // 【核心改进】优先纯净ID，降级去前缀
                 let productId = merchantProductIdIndex !== -1 && row[merchantProductIdIndex] ? row[merchantProductIdIndex].toString().trim() : '';
                 if (!productId && skuIdIndex !== -1 && row[skuIdIndex]) {
                     let skuStr = row[skuIdIndex].toString().trim();
                     if (skuStr.includes('_')) {
                         let parts = skuStr.split('_');
-                        productId = parts[parts.length - 1]; // 去除前缀提取出纯粹 SKU
+                        productId = parts[parts.length - 1]; 
                     } else {
                         productId = skuStr;
                     }
@@ -1311,7 +1227,6 @@
             }
         }
 
-        // 🟢【核心逻辑重写 2】解析 BOM 字典与 Barcode 字典
         function processSkuData(data) {
             if (data.length < 2) return;
             const headers = data[0];
@@ -1328,7 +1243,7 @@
             
             window.skuDict = {};
             window.bomDict = {};
-            skuData = { _initialized: true }; // 维持UI验证
+            skuData = { _initialized: true }; 
             
             for (let i = 1; i < data.length; i++) {
                 const row = data[i];
@@ -1338,17 +1253,14 @@
                 const baseBarcode = barcodeIdx !== -1 && row[barcodeIdx] ? row[barcodeIdx].toString().trim() : '';
                 const isBom = bomIdx !== -1 && row[bomIdx] ? row[bomIdx].toString().trim().toUpperCase() === 'YES' : false;
                 
-                // 1. 保存所有单品的 Barcode
                 if (baseSku) {
                     window.skuDict[baseSku] = (baseBarcode === '0' ? '' : baseBarcode);
                 }
                 
-                // 2. 如果是BOM，构建母子单拆分映射
                 if (isBom) {
                     const parentSku = bomSkuIdx !== -1 && row[bomSkuIdx] ? row[bomSkuIdx].toString().trim() : '';
                     const parentBarcode = bomBarcodeIdx !== -1 && row[bomBarcodeIdx] ? row[bomBarcodeIdx].toString().trim() : '';
                     const childName = nameIdx !== -1 && row[nameIdx] ? row[nameIdx].toString().trim() : '';
-                    // 【关键】读取表格里的 BOM Unit 作为乘法倍数
                     const unit = bomUnitIdx !== -1 && row[bomUnitIdx] ? parseInt(row[bomUnitIdx]) : 1;
 
                     if (parentSku) {
@@ -1360,7 +1272,6 @@
                             unit: unit
                         });
                         
-                        // 记录母单条码
                         if (parentBarcode && parentBarcode !== '0') {
                             window.skuDict[parentSku] = parentBarcode;
                         }
@@ -1398,7 +1309,6 @@
             }
         });
 
-        // 日期处理助手 (保留原逻辑)
         function formatDateTime(dateStr, timeStr) {
             if (!dateStr) return '';
             let formattedDate = '';
@@ -1457,7 +1367,6 @@
             return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
         }
 
-        // 🟢【核心逻辑重写 3】载入并拆分订单，精准匹配 Barcode 与 计算数量
         function loadOrder(waybill) {
             currentOrderId = waybill;
             
@@ -1476,30 +1385,27 @@
             
             currentOrder = JSON.parse(JSON.stringify(orderData[waybill]));
             
-            // 匹配母子单并应用字典
             currentOrder.products.forEach(product => {
                 const pid = product.productId;
                 
                 if (window.bomDict && window.bomDict[pid]) {
-                    // 这是 BOM 母单，进行拆分
                     product.isBom = true;
                     product.bomProductId = pid;
                     product.bomName = product.skuNameZh;
-                    product.bomBarcode = window.skuDict[pid] || ''; // 取母单条码
+                    product.bomBarcode = window.skuDict[pid] || ''; 
                     product.bomComboQty = 1; 
                     product.barcode = product.bomBarcode;
                     
                     product.children = window.bomDict[pid].map(child => ({
                         skuId: child.sku,
                         name: child.name,
-                        comboQty: child.unit, // <-- 直接使用准确提取的 BOM Unit
+                        comboQty: child.unit, 
                         barcode: child.barcode,
                         scanQty: 0
                     }));
                 } else {
-                    // 普通单品
                     product.isBom = false;
-                    product.barcode = window.skuDict[pid] || ''; // 取自身条码
+                    product.barcode = window.skuDict[pid] || '';
                     product.children = [];
                 }
             });
@@ -1523,7 +1429,6 @@
             forceCompleteBtn.disabled = false;
         }
 
-        // 数量计算与完成状态判定
         function getBomChildTargetQty(product, child) {
             return (product.quantity || 0) * (child.comboQty || 1);
         }
@@ -1537,30 +1442,23 @@
             return product.children.every(child => getBomChildFulfilledQty(product, child) >= getBomChildTargetQty(product, child));
         }
 
-        function getProductTargetCount(product) {
-            if (!product) return 0;
-
-            if (product.isBom && product.children && product.children.length > 0) {
-                return product.children.reduce((total, child) => total + getBomChildTargetQty(product, child), 0);
-            }
-
-            const productKey = product.productId || product.skuId || '';
-            if (productKey && window.bomDict && window.bomDict[productKey]) {
-                return window.bomDict[productKey].reduce((total, child) => {
-                    const unit = child.unit || child.comboQty || 1;
-                    return total + ((product.quantity || 0) * unit);
-                }, 0);
-            }
-
-            return product.quantity || 0;
-        }
-
         function getProductCount(products) {
             if (!products) return 0;
-            return products.reduce((total, product) => total + getProductTargetCount(product), 0);
+            return products.reduce((total, product) => {
+                if (product.isBom && product.children) {
+                    return total + product.children.reduce((sub, child) => sub + getBomChildTargetQty(product, child), 0);
+                }
+                const pid = product.productId;
+                if (window.bomDict && window.bomDict[pid]) {
+                    const bomChildrenTargetSum = window.bomDict[pid].reduce((sub, child) => {
+                        return sub + ((product.quantity || 0) * (child.unit || 1));
+                    }, 0);
+                    return total + bomChildrenTargetSum;
+                }
+                return total + (product.quantity || 0);
+            }, 0);
         }
 
-        // 渲染表格
         function renderProductTable() {
             productTableBody.innerHTML = '';
             
@@ -1575,6 +1473,15 @@
                 const displayBarcode = product.isBom ? product.bomBarcode : product.barcode;
                 const displayQty = product.quantity;
                 
+                // 【新增逻辑：子推母】自动计算母单目前集齐了几套
+                let parentScannedDisplay = product.scanQty || 0;
+                if (product.isBom && product.children && product.children.length > 0) {
+                    let setsFromChildren = product.children.map(child => {
+                        return Math.floor(getBomChildFulfilledQty(product, child) / (child.comboQty || 1));
+                    });
+                    parentScannedDisplay = Math.min(...setsFromChildren);
+                }
+
                 const row = document.createElement('tr');
                 row.className = 'product-row';
                 row.innerHTML = `
@@ -1582,7 +1489,7 @@
                     <td>${displayName}</td>
                     <td>${displayBarcode || '<span style="color:#cbd5e1">-</span>'}</td>
                     <td><strong>${displayQty}</strong></td>
-                    <td><input type="number" class="quantity-input" value="${product.scanQty || 0}" min="0" onchange="updateScanQty(${index}, this.value)"></td>
+                    <td><input type="number" class="quantity-input" value="${product.isBom ? parentScannedDisplay : (product.scanQty || 0)}" min="0" onchange="updateScanQty(${index}, this.value)"></td>
                 `;
                 productTableBody.appendChild(row);
                 
@@ -1609,11 +1516,20 @@
             });
         }
 
-        // 数量更新与进度追踪
+        // 【新增逻辑：母推子】如果强行修改了母单，重新洗牌子单进度
         function updateScanQty(index, value) {
             const qty = parseInt(value);
             if (isNaN(qty) || qty < 0) return;
-            currentOrder.products[index].scanQty = qty;
+            
+            const product = currentOrder.products[index];
+            product.scanQty = qty;
+
+            if (product.isBom && product.children) {
+                product.children.forEach(child => {
+                    child.scanQty = 0; // 为了不重复计算，强行定义母单后清除零散的子单输入
+                });
+            }
+
             updateOrderProgress();
             renderProductTable();
             checkAllProductsCompleted();
@@ -1661,7 +1577,6 @@
             if (allCompleted) completeOrder();
         }
 
-        // 扫描条码
         barcodeInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 const barcode = this.value.trim();
@@ -1701,7 +1616,7 @@
                             } else {
                                 child.scanQty = (child.scanQty || 0) + 1;
                                 matchedProduct = child;
-                                matchedIndex = i; // 标记父节点方便高亮
+                                matchedIndex = i; 
                                 matched = true;
                             }
                             break;
@@ -1791,7 +1706,6 @@
             }
         });
 
-        // 结果和统计报表
         const resultTabs = document.querySelectorAll('.results-tab');
         resultTabs.forEach(tab => {
             tab.addEventListener('click', function() {

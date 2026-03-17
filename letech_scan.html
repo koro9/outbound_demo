@@ -2319,6 +2319,19 @@
             return getBomChildFulfilledQty(product, child);
         }
 
+        function getDisplayedParentScanQty(product) {
+            if (!product || !product.isBom || !product.children || product.children.length === 0) {
+                return product && product.scanQty ? product.scanQty : 0;
+            }
+
+            const setsFromChildren = product.children.map(child => {
+                const comboQty = child.comboQty || 1;
+                return Math.floor(getBomChildFulfilledQty(product, child) / comboQty);
+            });
+
+            return setsFromChildren.length > 0 ? Math.min(...setsFromChildren) : (product.scanQty || 0);
+        }
+
         function isBomProductCompleted(product) {
             if (!product || !product.isBom || !product.children || product.children.length === 0) {
                 return false;
@@ -2516,13 +2529,14 @@
                 const displayName = product.isBom ? (product.bomName || product.skuNameZh) : product.skuNameZh;
                 const displayBarcode = product.isBom ? (product.bomBarcode || product.barcode) : product.barcode;
                 const displayQty = product.quantity;
+                const displayScanQty = product.isBom ? getDisplayedParentScanQty(product) : (product.scanQty || 0);
                 
                 parentRow.innerHTML = `
                     <td><strong>${displayId}</strong></td>
                     <td>${displayName}</td>
                     <td>${displayBarcode}</td>
                     <td><strong>${displayQty}</strong></td>
-                    <td><input type="number" class="quantity-input" min="0" value="${product.scanQty || 0}" onchange="updateScanQty(${index}, this.value)"></td>
+                    <td><input type="number" class="quantity-input" min="0" value="${displayScanQty}" onchange="updateScanQty(${index}, this.value)"></td>
                 `;
                 
                 productTableBody.appendChild(parentRow);
@@ -2565,7 +2579,14 @@
             const qty = parseInt(value);
             if (isNaN(qty) || qty < 0) return;
             
-            currentOrder.products[index].scanQty = qty;
+            const product = currentOrder.products[index];
+            product.scanQty = qty;
+
+            if (product.isBom && product.children) {
+                product.children.forEach(child => {
+                    child.scanQty = 0;
+                });
+            }
             
             updateOrderProgress();
             renderProductTable();
