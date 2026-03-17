@@ -1082,6 +1082,7 @@
         <div class="results-section">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h2>📊 Scan Results</h2>
+                <button class="btn clear-data-btn" id="clearDataBtn" style="margin-top: -10px;" data-i18n="results.clearData">🗑️ Clear All Data</button>
             </div>
             <div class="results-tabs">
                 <div class="results-tab active" data-tab="correct">✅ Successful</div>
@@ -1420,6 +1421,7 @@
             productTableHeaders[4].textContent = translations[lang].productTable.scanQuantity;
             
             document.querySelector('.results-section h2').textContent = translations[lang].results.title;
+            document.getElementById('clearDataBtn').textContent = translations[lang].results.clearData;
             
             const correctTab = document.querySelector('.results-tab[data-tab="correct"]');
             const pendingTab = document.querySelector('.results-tab[data-tab="pending"]');
@@ -1477,6 +1479,7 @@
         const barcodeInput = document.getElementById('barcodeInput');
         const resetOrderBtn = document.getElementById('resetOrderBtn');
         const forceCompleteBtn = document.getElementById('forceCompleteBtn');
+        const clearDataBtn = document.getElementById('clearDataBtn');
         const autoPrintToggle = document.getElementById('autoPrintToggle');
         const productTableBody = document.getElementById('productTableBody');
         const infoAlert = document.getElementById('infoAlert');
@@ -1599,6 +1602,67 @@
             } catch (error) {
                 console.error('Failed to delete file data:', error);
             }
+        }
+
+        async function clearAllData() {
+            try {
+                await Promise.all([
+                    deleteFileData('order'),
+                    deleteFileData('sku'),
+                    deleteFileData('label')
+                ]);
+            } catch (error) {
+                console.error('Failed to clear IndexedDB file data:', error);
+            }
+
+            try {
+                localStorage.removeItem('offlineScan_scanResults');
+                localStorage.removeItem('offlineScan_orderData');
+                localStorage.removeItem('offlineScan_skuData');
+                localStorage.removeItem('offlineScan_labelData');
+            } catch (error) {
+                console.error('Failed to clear localStorage data:', error);
+            }
+
+            orderData = {};
+            skuData = {};
+            labelData = {};
+            scanResults = {};
+            currentOrder = null;
+            currentOrderId = '';
+            window.bomDict = {};
+            window.skuDict = {};
+            orderFileData = null;
+            skuFileData = null;
+            labelFileData = null;
+
+            orderStatus.textContent = translations[currentLang].upload.waiting;
+            orderStatus.className = 'upload-status';
+            skuStatus.textContent = translations[currentLang].upload.waiting;
+            skuStatus.className = 'upload-status';
+            labelStatus.textContent = translations[currentLang].upload.waiting;
+            labelStatus.className = 'upload-status';
+
+            orderExcelInput.value = '';
+            skuExcelInput.value = '';
+            labelExcelInput.value = '';
+            orderInput.disabled = true;
+            barcodeInput.disabled = true;
+            resetOrderBtn.disabled = true;
+            forceCompleteBtn.disabled = true;
+            orderInput.value = '';
+            barcodeInput.value = '';
+
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (loadingOverlay) {
+                loadingOverlay.style.display = 'none';
+            }
+
+            resetPage();
+            updateResultsTables();
+            updateStats();
+
+            showAlert(translations[currentLang].alerts.dataCleared, 'success');
         }
 
         async function initializeData() {
@@ -2900,6 +2964,14 @@
             completeOrder({ forced: true });
         });
 
+        clearDataBtn.addEventListener('click', async function() {
+            if (!confirm(translations[currentLang].confirm.clearData)) {
+                return;
+            }
+
+            await clearAllData();
+        });
+
         // 结果标签切换
         const resultTabs = document.querySelectorAll('.results-tab');
         resultTabs.forEach(tab => {
@@ -3084,6 +3156,10 @@
                             transform-origin: top left;
                             width: 300%;
                             height: 300%;
+                        }
+                        .label-content,
+                        .label-content * {
+                            font-weight: 700 !important;
                         }
                         @media print {
                             body {
@@ -3321,9 +3397,9 @@
                 // const containerWidth = 120 * 3.7795275591;
                 // const containerHeight = 66 * 3.7795275591; // 实际高度72mm，减去上下各3mm内边距
                 
-                // 计算合适的字体大小（暂时注释，使用固定字号）
+                // 计算合适的字体大小（暂时注释，使用固定字号12）
                 // const fontSize = calculateFoodLabelRightFontSize(data['I'], containerWidth, containerHeight);
-                const fontSize = 10;
+                const fontSize = 12;
                 
                 html += `<div style="position: absolute; top: 35mm; left: 79.5mm; width: 120mm; height: 72mm; padding: 3mm 0; box-sizing: border-box; overflow: hidden; font-size: ${fontSize}px;">${data['I']}</div>`;
             }
