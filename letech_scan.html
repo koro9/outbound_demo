@@ -2026,7 +2026,7 @@
         // 与后端相同的列映射
         const COLUMN_MAPPING = {
             "health_food": ["A", "B", "I", "AU", "X", "AS", "T", "AV", "AH", "AJ", "AK", "AL", "AM", "AN", "AO", "AP", "AQ", "G"],
-            "food_label": ["A", "B", "AG", "AJ", "AK", "AL", "AM", "AN", "AO", "AP", "AQ", "AE", "X", "I", "T", "G"],
+            "food_label": ["A", "B", "AG", "AJ", "AK", "AL", "AM", "AN", "AO", "AP", "AQ", "AD", "AE", "X", "I", "T", "G"],
             "special_label": ["A", "B", "AW", "AS", "AU", "I", "AY", "G"],
             "ordinary_label": ["AS", "G"]
         };
@@ -3146,15 +3146,54 @@
             }
         }
 
+        function formatExpiryDate(expiryValue) {
+            if (expiryValue === undefined || expiryValue === null) {
+                return { english: 'YY-MM', chinese: '年-月' };
+            }
+
+            const raw = expiryValue.toString().trim();
+            if (!raw) {
+                return { english: 'YY-MM', chinese: '年-月' };
+            }
+
+            const normalized = raw
+                .toUpperCase()
+                .replace(/[年月日]/g, '-')
+                .replace(/[./]/g, '-')
+                .replace(/\s+/g, '')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '');
+
+            const parts = normalized.split('-').filter(Boolean);
+            const hasDay = normalized.includes('DD') || parts.length >= 3;
+            const hasFullYear = normalized.includes('YYYY');
+
+            const english = hasFullYear
+                ? (hasDay ? 'YYYY-MM-DD' : 'YYYY-MM')
+                : (hasDay ? 'YY-MM-DD' : 'YY-MM');
+
+            return {
+                english,
+                chinese: hasDay ? '年-月-日' : '年-月'
+            };
+        }
+
         // 渲染食品标签
         function renderFoodLabel(data) {
             let html = '';
+            const expiryDate = formatExpiryDate(data['AD']);
+            const englishExpiryText = expiryDate.english;
+            const chineseExpiryText = expiryDate.chinese;
+            const topDividerY = 30;
+            const lowerDividerY = 112;
+            const lowerSectionTop = 117;
+            const lowerLeftWidth = 112;
+            const lowerRightWidth = 82;
             
             // 绘制分割线
-            html += `<div style="position: absolute; top: 30mm; left: 0; width: 210mm; height: 2px; background-color: black;"></div>`;
-            html += `<div style="position: absolute; top: 120mm; left: 0; width: 210mm; height: 2px; background-color: black;"></div>`;
-            html += `<div style="position: absolute; top: 30mm; left: 73.5mm; width: 2px; height: 90mm; background-color: black;"></div>`;
-            
+            html += `<div style="position: absolute; top: ${topDividerY}mm; left: 0; width: 210mm; height: 2px; background-color: black;"></div>`;
+            html += `<div style="position: absolute; top: ${lowerDividerY}mm; left: 0; width: 210mm; height: 2px; background-color: black;"></div>`;
+            html += `<div style="position: absolute; top: ${topDividerY}mm; left: 73.5mm; width: 2px; height: ${lowerDividerY - topDividerY}mm; background-color: black;"></div>`;            
             // Top块 - 产品描述
             html += `<div style="position: absolute; top: 10mm; left: 6mm; width: 200mm;">`;
             // Barcode
@@ -3182,73 +3221,73 @@
             html += `</div>`;
             
             // 中间层 - 左侧
-            html += `<div style="position: absolute; top: 35mm; left: 6mm; font-size: 14px; font-weight: bold;">Nutrition Information</div>`;
+            html += `<div style="position: absolute; top: 35mm; left: 6mm; font-size: 13px; font-weight: bold;">Nutrition Information</div>`;
             
             // 营养信息容器
-            html += `<div style="position: absolute; top: 45mm; left: 6mm; width: 60mm; font-size: 12px;">`;
+            html += `<div style="position: absolute; top: 45mm; left: 6mm; width: 60mm; font-size: 11px;">`;
             
             const servingSize = data['AG'] || '';
-            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 3mm;">`;
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 2mm;">`;
             html += `<span>Serving Size:</span>`;
             html += `<span>${servingSize}</span>`;
             html += `</div>`;
             
             const energy = data['AJ'] || '';
-            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 3mm;">`;
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 2mm;">`;
             html += `<span>Energy:</span>`;
             html += `<span>${energy}</span>`;
             html += `</div>`;
             
             const protein = data['AK'] || '';
-            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 3mm;">`;
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 2mm;">`;
             html += `<span>Protein:</span>`;
             html += `<span>${protein}</span>`;
             html += `</div>`;
             
             const totalFat = data['AL'] || '';
-            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 3mm;">`;
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 2mm;">`;
             html += `<span>Total fat:</span>`;
             html += `<span>${totalFat}</span>`;
             html += `</div>`;
             
             const satFat = data['AM'] || '';
-            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 3mm; padding-left: 5mm;">`;
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 2mm; padding-left: 5mm;">`;
             html += `<span>- Saturated fat:</span>`;
             html += `<span>${satFat}</span>`;
             html += `</div>`;
             
             const transFat = data['AN'] || '';
-            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 3mm; padding-left: 5mm;">`;
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 2mm; padding-left: 5mm;">`;
             html += `<span>- Trans fat:</span>`;
             html += `<span>${transFat}</span>`;
             html += `</div>`;
             
             const carbs = data['AO'] || '';
-            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 3mm;">`;
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 2mm;">`;
             html += `<span>Carbohydrates:</span>`;
             html += `<span>${carbs}</span>`;
             html += `</div>`;
             
             const sugars = data['AP'] || '';
-            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 3mm; padding-left: 5mm;">`;
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 2mm; padding-left: 5mm;">`;
             html += `<span>- Sugars:</span>`;
             html += `<span>${sugars}</span>`;
             html += `</div>`;
             
             const sodium = data['AQ'] || '';
-            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 3mm;">`;
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 2mm;">`;
             html += `<span>Sodium:</span>`;
             html += `<span>${sodium}</span>`;
             html += `</div>`;
             
             const netContent = data['AE'] || '';
-            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 3mm;">`;
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 2mm;">`;
             html += `<span>Net Content:</span>`;
             html += `<span>${netContent}</span>`;
             html += `</div>`;
             
             const country = data['X'] || '';
-            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 3mm;">`;
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 2mm;">`;
             html += `<span>Country Of Origin:</span>`;
             html += `<span>${country}</span>`;
             html += `</div>`;
@@ -3258,23 +3297,24 @@
             // 中间层 - 右侧
             if (data['I']) {
                 // 计算右侧容器的宽度和高度
-                const containerWidth = 120 * 3.7795275591;
-                const containerHeight = 80 * 3.7795275591;
+                // const containerWidth = 120 * 3.7795275591;
+                // const containerHeight = 66 * 3.7795275591; // 实际高度72mm，减去上下各3mm内边距
                 
-                // 计算合适的字体大小
-                const fontSize = calculateFoodLabelRightFontSize(data['I'], containerWidth, containerHeight);
+                // 计算合适的字体大小（暂时注释，使用固定字号）
+                // const fontSize = calculateFoodLabelRightFontSize(data['I'], containerWidth, containerHeight);
+                const fontSize = 10;
                 
-                html += `<div style="position: absolute; top: 35mm; left: 79.5mm; width: 120mm; height: 80mm; font-size: ${fontSize}px;">${data['I']}</div>`;
+                html += `<div style="position: absolute; top: 35mm; left: 79.5mm; width: 120mm; height: 72mm; padding: 3mm 0; box-sizing: border-box; overflow: hidden; font-size: ${fontSize}px;">${data['I']}</div>`;
             }
             
             // 下层内容 - 左侧
-            html += `<div style="position: absolute; top: 125mm; left: 6mm; width: 120mm; height: 20mm; font-size: 18px;">${data['T'] || ''}</div>`;
+            html += `<div style="position: absolute; top: ${lowerSectionTop}mm; left: 6mm; width: ${lowerLeftWidth}mm; height: 30mm; font-size: 18px; line-height: 1.2; overflow-wrap: anywhere;">${data['T'] || ''}</div>`;
             
             // 下层内容 - 右下角
-            html += `<div style="position: absolute; top: 125mm; right: 6mm; text-align: right; font-size: 16px;">`;
-            html += `<div>Best before(Date Format):</div>`;
+            html += `<div style="position: absolute; top: ${lowerSectionTop}mm; right: 6mm; width: ${lowerRightWidth}mm; text-align: right; font-size: 16px;">`;
+            html += `<div>Best before(${englishExpiryText})</div>`;
+            html += `<div>此日期前最佳(${chineseExpiryText})</div>`;
             html += `<div>Show on package(見包裝)</div>`;
-            html += `<div>此日期前最佳(Format CHI)</div>`;
             html += `</div>`;
             
             return html;
