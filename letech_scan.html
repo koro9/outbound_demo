@@ -1391,8 +1391,8 @@
                 orderStatusEl.textContent = translations[lang].upload.waiting;
             }
             
-            if (skuStatusEl.classList.contains('success') && Object.keys(skuData).length > 0) {
-                const skuCount = Object.keys(skuData).length;
+            if (skuStatusEl.classList.contains('success') && window.skuDict && Object.keys(window.skuDict).length > 0) {
+                const skuCount = Object.keys(window.skuDict).length;
                 skuStatusEl.textContent = `${translations[lang].upload.success}, ${skuCount} ${translations[lang].upload.skusLoaded}`;
             } else {
                 skuStatusEl.textContent = translations[lang].upload.waiting;
@@ -1457,6 +1457,8 @@
         let currentOrder = null;
         let scanResults = {};
         let currentOrderId = '';
+        window.bomDict = {};
+        window.skuDict = {};
         
         let orderFileData = null;
         let skuFileData = null;
@@ -1604,6 +1606,8 @@
             skuData = {};
             labelData = {};
             scanResults = {};
+            window.bomDict = {};
+            window.skuDict = {};
             orderFileData = null;
             skuFileData = null;
             labelFileData = null;
@@ -1662,7 +1666,7 @@
 
             checkFilesReady();
 
-            if (Object.keys(orderData).length > 0 && Object.keys(skuData).length > 0) {
+            if (Object.keys(orderData).length > 0 && window.skuDict && Object.keys(window.skuDict).length > 0) {
                 orderInput.disabled = false;
                 barcodeInput.disabled = true;
                 orderInput.focus();
@@ -1704,7 +1708,7 @@
                 const worksheet = workbook.Sheets[firstSheetName];
                 const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                 processSkuData(jsonData);
-                const skuCount = Object.keys(skuData).length;
+                const skuCount = Object.keys(window.skuDict).length;
                 skuStatus.textContent = `Loaded from cache, ${skuCount} ${translations[currentLang].upload.skusLoaded}`;
                 skuStatus.className = 'upload-status success';
                 skuFileData = {
@@ -1806,7 +1810,7 @@
                         
                         await storeFileData('sku', file.name, data);
                         
-                        const skuCount = Object.keys(skuData).length;
+                        const skuCount = Object.keys(window.skuDict).length;
                         skuStatus.textContent = `${translations[currentLang].upload.success}, ${skuCount} ${translations[currentLang].upload.skusLoaded}`;
                         skuStatus.className = 'upload-status success';
                         showAlert(translations[currentLang].alerts.skuFileUploaded, 'success');
@@ -1904,8 +1908,19 @@
                     };
                 }
                 
+                let productId = merchantProductIdIndex !== -1 && row[merchantProductIdIndex] ? row[merchantProductIdIndex].toString().trim() : '';
+                if (!productId && skuIdIndex !== -1 && row[skuIdIndex]) {
+                    const skuStr = row[skuIdIndex].toString().trim();
+                    if (skuStr.includes('_')) {
+                        const parts = skuStr.split('_');
+                        productId = parts[parts.length - 1];
+                    } else {
+                        productId = skuStr;
+                    }
+                }
+
                 const product = {
-                    productId: merchantProductIdIndex !== -1 && row[merchantProductIdIndex] ? row[merchantProductIdIndex].toString().trim() : '',
+                    productId: productId,
                     skuId: skuIdIndex !== -1 && row[skuIdIndex] ? row[skuIdIndex].toString().trim() : '',
                     skuNameZh: skuNameZhIndex !== -1 && row[skuNameZhIndex] ? row[skuNameZhIndex].toString().trim() : '',
                     quantity: totalQtyIndex !== -1 && row[totalQtyIndex] ? parseInt(row[totalQtyIndex]) : 0,
@@ -1926,53 +1941,71 @@
             if (data.length < 2) return;
             
             const headers = data[0];
-            
-            const baseSkuIndex = headers.findIndex(h => h && h.toString().toLowerCase().includes('base') && h.toString().toLowerCase().includes('sku'));
-            const nameIndex = headers.findIndex(h => h && h.toString().toLowerCase().includes('name'));
-            const barcodeIndex = headers.findIndex(h => h && h.toString().toLowerCase().includes('barcode'));
-            const bomIndex = headers.findIndex(h => h && h.toString().toLowerCase().includes('bom'));
-            const childSkuIndex = headers.findIndex(h => h && h.toString().toLowerCase().includes('child') && h.toString().toLowerCase().includes('sku'));
-            const childNameIndex = headers.findIndex(h => h && h.toString().toLowerCase().includes('child') && h.toString().toLowerCase().includes('name'));
-            const comboQtyIndex = headers.findIndex(h => h && h.toString().toLowerCase().includes('combo') && h.toString().toLowerCase().includes('qty'));
-            const childBarcodeIndex = headers.findIndex(h => h && h.toString().toLowerCase().includes('child') && h.toString().toLowerCase().includes('barcode'));
-            
-            const backupChildSkuIndex = 4; // E列
-            const backupChildNameIndex = 5; // F列
-            const backupComboQtyIndex = 6; // G列
-            const backupChildBarcodeIndex = 7; // H列
-            
-            skuData = {};
-            
+
+            const getIdxExact = (name) => headers.findIndex(h => h && h.toString().trim().toLowerCase() === name.toLowerCase());
+            const getIdxByIncludes = (checker) => headers.findIndex(h => h && checker(h.toString().trim().toLowerCase()));
+
+            const baseSkuIndex = getIdxExact('Base SKU') !== -1
+                ? getIdxExact('Base SKU')
+                : getIdxByIncludes(v => v.includes('base') && v.includes('sku'));
+            const nameIndex = getIdxExact('Name') !== -1
+                ? getIdxExact('Name')
+                : getIdxByIncludes(v => v.includes('name') && !v.includes('child'));
+            const barcodeIndex = getIdxExact('Barcode') !== -1
+                ? getIdxExact('Barcode')
+                : getIdxByIncludes(v => v.includes('barcode') && !v.includes('child') && !v.includes('bom'));
+            const bomIndex = getIdxExact('BOM') !== -1
+                ? getIdxExact('BOM')
+                : getIdxByIncludes(v => v === 'bom' || (v.includes('bom') && !v.includes('sku') && !v.includes('unit') && !v.includes('barcode')));
+            const bomSkuIndex = getIdxExact('BOM SKU') !== -1
+                ? getIdxExact('BOM SKU')
+                : getIdxByIncludes(v => (v.includes('bom') && v.includes('sku')) || (v.includes('child') && v.includes('sku')));
+            const bomUnitIndex = getIdxExact('BOM Unit') !== -1
+                ? getIdxExact('BOM Unit')
+                : getIdxByIncludes(v => (v.includes('bom') && v.includes('unit')) || (v.includes('combo') && v.includes('qty')));
+            const bomBarcodeIndex = getIdxExact('BOM Barcode') !== -1
+                ? getIdxExact('BOM Barcode')
+                : getIdxByIncludes(v => (v.includes('bom') && v.includes('barcode')) || (v.includes('child') && v.includes('barcode')));
+
+            window.skuDict = {};
+            window.bomDict = {};
+            skuData = { _initialized: true };
+
             for (let i = 1; i < data.length; i++) {
                 const row = data[i];
                 if (!row || row.length === 0) continue;
-                
-                const baseSku = row[baseSkuIndex] ? row[baseSkuIndex].toString().trim() : '';
+
+                const baseSku = baseSkuIndex !== -1 && row[baseSkuIndex] ? row[baseSkuIndex].toString().trim() : '';
                 if (!baseSku) continue;
-                
-                const isBom = bomIndex !== -1 && row[bomIndex] ? row[bomIndex].toString().trim().toLowerCase() === 'yes' : false;
-                
-                const actualChildSkuIndex = childSkuIndex !== -1 ? childSkuIndex : backupChildSkuIndex;
-                const actualChildNameIndex = childNameIndex !== -1 ? childNameIndex : backupChildNameIndex;
-                const actualComboQtyIndex = comboQtyIndex !== -1 ? comboQtyIndex : backupComboQtyIndex;
-                const actualChildBarcodeIndex = childBarcodeIndex !== -1 ? childBarcodeIndex : backupChildBarcodeIndex;
-                
-                const skuItem = {
-                    skuId: baseSku,
-                    name: row[nameIndex] ? row[nameIndex].toString().trim() : '',
-                    barcode: row[barcodeIndex] ? row[barcodeIndex].toString().trim() : '',
-                    isBom: isBom,
-                    baseSku: baseSku,
-                    childSku: row[actualChildSkuIndex] ? row[actualChildSkuIndex].toString().trim() : '',
-                    childName: row[actualChildNameIndex] ? row[actualChildNameIndex].toString().trim() : '',
-                    comboQty: actualComboQtyIndex !== -1 && row[actualComboQtyIndex] ? parseInt(row[actualComboQtyIndex]) : 1,
-                    childBarcode: row[actualChildBarcodeIndex] ? row[actualChildBarcodeIndex].toString().trim() : ''
-                };
-                
-                if (!skuData[baseSku]) {
-                    skuData[baseSku] = [];
+
+                const baseBarcode = barcodeIndex !== -1 && row[barcodeIndex] ? row[barcodeIndex].toString().trim() : '';
+                const isBom = bomIndex !== -1 && row[bomIndex] ? row[bomIndex].toString().trim().toUpperCase() === 'YES' : false;
+
+                window.skuDict[baseSku] = baseBarcode === '0' ? '' : baseBarcode;
+
+                if (isBom) {
+                    const parentSku = bomSkuIndex !== -1 && row[bomSkuIndex] ? row[bomSkuIndex].toString().trim() : '';
+                    const parentBarcode = bomBarcodeIndex !== -1 && row[bomBarcodeIndex] ? row[bomBarcodeIndex].toString().trim() : '';
+                    const childName = nameIndex !== -1 && row[nameIndex] ? row[nameIndex].toString().trim() : '';
+                    const unit = bomUnitIndex !== -1 && row[bomUnitIndex] ? parseInt(row[bomUnitIndex]) : 1;
+
+                    if (parentSku) {
+                        if (!window.bomDict[parentSku]) {
+                            window.bomDict[parentSku] = [];
+                        }
+
+                        window.bomDict[parentSku].push({
+                            sku: baseSku,
+                            barcode: baseBarcode === '0' ? '' : baseBarcode,
+                            name: childName,
+                            unit: Number.isNaN(unit) || unit <= 0 ? 1 : unit
+                        });
+
+                        if (parentBarcode && parentBarcode !== '0') {
+                            window.skuDict[parentSku] = parentBarcode;
+                        }
+                    }
                 }
-                skuData[baseSku].push(skuItem);
             }
         }
 
@@ -2044,7 +2077,7 @@
         // 检查文件是否都上传完成
         function checkFilesReady() {
             const hasOrderData = Object.keys(orderData).length > 0;
-            const hasSkuData = Object.keys(skuData).length > 0;
+            const hasSkuData = window.skuDict && Object.keys(window.skuDict).length > 0;
             
             if (hasOrderData && hasSkuData) {
                 showAlert(translations[currentLang].alerts.filesReady, 'success');
@@ -2384,30 +2417,25 @@
             currentOrder = JSON.parse(JSON.stringify(orderData[waybill]));
             
             currentOrder.products.forEach(product => {
-                const skuItems = getSkuItemsForProduct(product);
-                if (skuItems.length > 0) {
-                    const primarySkuItem = getPrimarySkuItem(skuItems);
-                    const matchedBomItem = findMatchedBomItem(product, skuItems);
-                    product.isBom = Boolean(matchedBomItem);
-                    
-                    if (product.isBom) {
-                        // BOM母件行：取第一条BOM记录的childSku/childName/childBarcode作为母件显示
-                        product.bomProductId = matchedBomItem.childSku || product.skuId || product.productId;
-                        product.bomName = matchedBomItem.childName || product.skuNameZh;
-                        product.bomBarcode = matchedBomItem.childBarcode || '';
-                        product.bomComboQty = matchedBomItem.comboQty || 1;
-                        product.bomMultiplier = extractBomMultiplier(product.bomName, 1);
-                        product.barcode = product.bomBarcode;
-                        
-                        // 子件行：锁定当前母件对应的子件，只展示一行
-                        product.children = buildBomChildren(matchedBomItem, product.bomMultiplier, primarySkuItem ? primarySkuItem.barcode : '');
-                    } else {
-                        product.barcode = primarySkuItem && primarySkuItem.barcode ? primarySkuItem.barcode : '';
-                        product.isBom = false;
-                        product.children = [];
-                    }
+                const productKey = product.productId || product.skuId || '';
+
+                if (window.bomDict && window.bomDict[productKey]) {
+                    product.isBom = true;
+                    product.bomProductId = productKey;
+                    product.bomName = product.skuNameZh;
+                    product.bomBarcode = (window.skuDict && window.skuDict[productKey]) ? window.skuDict[productKey] : '';
+                    product.bomComboQty = product.quantity || 1;
+                    product.bomMultiplier = 1;
+                    product.barcode = product.bomBarcode;
+                    product.children = window.bomDict[productKey].map(child => ({
+                        skuId: child.sku,
+                        name: child.name,
+                        comboQty: child.unit || 1,
+                        barcode: child.barcode || '',
+                        scanQty: 0
+                    }));
                 } else {
-                    product.barcode = product.barcode || '';
+                    product.barcode = (window.skuDict && window.skuDict[productKey]) ? window.skuDict[productKey] : '';
                     product.isBom = false;
                     product.children = [];
                 }
@@ -2452,17 +2480,6 @@
                 return product.children.reduce((total, child) => total + getBomChildTargetQty(product, child), 0);
             }
 
-            const skuItems = getSkuItemsForProduct(product);
-            if (skuItems.length > 0) {
-                const matchedBomItem = findMatchedBomItem(product, skuItems);
-                if (matchedBomItem) {
-                    const bomName = matchedBomItem.childName || product.skuNameZh;
-                    const bomComboQty = matchedBomItem.comboQty || 1;
-                    const bomMultiplier = extractBomMultiplier(bomName, 1);
-                    return bomComboQty * bomMultiplier;
-                }
-            }
-
             return product.quantity || 0;
         }
 
@@ -2490,7 +2507,7 @@
                 const displayId = product.isBom ? (product.bomProductId || product.productId) : product.productId;
                 const displayName = product.isBom ? (product.bomName || product.skuNameZh) : product.skuNameZh;
                 const displayBarcode = product.isBom ? (product.bomBarcode || product.barcode) : product.barcode;
-                const displayQty = product.isBom ? product.bomComboQty : product.quantity;
+                const displayQty = product.quantity;
                 
                 parentRow.innerHTML = `
                     <td><strong>${displayId}</strong></td>
@@ -2659,7 +2676,7 @@
                     // 先检查是否匹配母件条码
                     const parentBarcode = product.bomBarcode || product.barcode;
                     if (parentBarcode === barcode) {
-                        const parentQty = product.bomComboQty || 1;
+                        const parentQty = product.quantity || product.bomComboQty || 1;
                         if ((product.scanQty || 0) >= parentQty || isBomProductCompleted(product)) {
                             showAlert(translations[currentLang].alerts.productSufficient.replace('{productId}', product.bomProductId || product.productId), 'info');
                         } else {
