@@ -3127,12 +3127,13 @@
             // 使用隐藏 iframe 打印，避免新开页面
             const printFrame = document.createElement('iframe');
             printFrame.style.position = 'fixed';
-            printFrame.style.right = '0';
-            printFrame.style.bottom = '0';
-            printFrame.style.width = '0';
-            printFrame.style.height = '0';
+            printFrame.style.left = '-9999px';
+            printFrame.style.top = '0';
+            printFrame.style.width = '265px';  // 70mm @ 96dpi — needed for 300% scale trick
+            printFrame.style.height = '210px'; // 50mm + buffer
             printFrame.style.border = '0';
             printFrame.style.visibility = 'hidden';
+            printFrame.style.pointerEvents = 'none';
             document.body.appendChild(printFrame);
 
             const frameWindow = printFrame.contentWindow;
