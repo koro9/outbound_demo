@@ -2480,6 +2480,14 @@
                 return product.children.reduce((total, child) => total + getBomChildTargetQty(product, child), 0);
             }
 
+            const productKey = product.productId || product.skuId || '';
+            if (productKey && window.bomDict && window.bomDict[productKey]) {
+                return window.bomDict[productKey].reduce((total, child) => {
+                    const unit = child.unit || child.comboQty || 1;
+                    return total + ((product.quantity || 0) * unit);
+                }, 0);
+            }
+
             return product.quantity || 0;
         }
 

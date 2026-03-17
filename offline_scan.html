@@ -1537,14 +1537,27 @@
             return product.children.every(child => getBomChildFulfilledQty(product, child) >= getBomChildTargetQty(product, child));
         }
 
+        function getProductTargetCount(product) {
+            if (!product) return 0;
+
+            if (product.isBom && product.children && product.children.length > 0) {
+                return product.children.reduce((total, child) => total + getBomChildTargetQty(product, child), 0);
+            }
+
+            const productKey = product.productId || product.skuId || '';
+            if (productKey && window.bomDict && window.bomDict[productKey]) {
+                return window.bomDict[productKey].reduce((total, child) => {
+                    const unit = child.unit || child.comboQty || 1;
+                    return total + ((product.quantity || 0) * unit);
+                }, 0);
+            }
+
+            return product.quantity || 0;
+        }
+
         function getProductCount(products) {
             if (!products) return 0;
-            return products.reduce((total, product) => {
-                if (product.isBom && product.children) {
-                    return total + product.children.reduce((sub, child) => sub + getBomChildTargetQty(product, child), 0);
-                }
-                return total + (product.quantity || 0);
-            }, 0);
+            return products.reduce((total, product) => total + getProductTargetCount(product), 0);
         }
 
         // 渲染表格
