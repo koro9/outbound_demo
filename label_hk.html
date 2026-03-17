@@ -685,7 +685,7 @@
 
         const COLUMN_MAPPING = {
             "health_food": ["A", "B", "I", "AU", "X", "AS", "T", "AV", "AH", "AJ", "AK", "AL", "AM", "AN", "AO", "AP", "AQ", "G"],
-            "food_label": ["A", "B", "AG", "AJ", "AK", "AL", "AM", "AN", "AO", "AP", "AQ", "AE", "X", "I", "T", "G"],
+            "food_label": ["A", "B", "AG", "AJ", "AK", "AL", "AM", "AN", "AO", "AP", "AQ", "AD", "AE", "X", "I", "T", "G"],
             "special_label": ["A", "B", "AW", "AS", "AU", "I", "AY", "G"],
             "ordinary_label": ["AS", "G"]
         };
@@ -810,10 +810,47 @@
         function getLabelType(labelData) {
             const labelType = labelData['G'] ? labelData['G'].toString().trim().toLowerCase() : '';
             const ingredients = labelData['I'] ? labelData['I'].toString().trim().toLowerCase() : '';
-            if (labelType.includes('保健食品') || ingredients.includes('保健食品')) return 'health_food';
-            else if (labelType.includes('food label')) return 'food_label';
-            else if (labelType.includes('蟲蟲label') || labelType.includes('special label')) return 'special_label';
-            else return 'ordinary_label';
+            if (labelType.includes('保健食品') || ingredients.includes('保健食品')) {
+                return 'health_food';
+            } else if (labelType.includes('food label')) {
+                return 'food_label';
+            } else if (labelType.includes('蟲蟲label') || labelType.includes('special label')) {
+                return 'special_label';
+            } else {
+                return 'ordinary_label';
+            }
+        }
+
+        function formatExpiryDate(expiryValue) {
+            if (expiryValue === undefined || expiryValue === null) {
+                return { english: 'YY-MM', chinese: '年-月' };
+            }
+
+            const raw = expiryValue.toString().trim();
+            if (!raw) {
+                return { english: 'YY-MM', chinese: '年-月' };
+            }
+
+            const normalized = raw
+                .toUpperCase()
+                .replace(/[年月日]/g, '-')
+                .replace(/[./]/g, '-')
+                .replace(/\s+/g, '')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '');
+
+            const parts = normalized.split('-').filter(Boolean);
+            const hasDay = normalized.includes('DD') || parts.length >= 3;
+            const hasFullYear = normalized.includes('YYYY');
+
+            const english = hasFullYear
+                ? (hasDay ? 'YYYY-MM-DD' : 'YYYY-MM')
+                : (hasDay ? 'YY-MM-DD' : 'YY-MM');
+
+            return {
+                english,
+                chinese: hasDay ? '年-月-日' : '年-月'
+            };
         }
 
         function calculateFoodLabelRightFontSize(text, containerWidth, containerHeight, maxFontSize = 48, minFontSize = 12) {
@@ -837,59 +874,121 @@
 
         function renderFoodLabel(data) {
             let html = '';
-            html += `<div style="position: absolute; top: 30mm; left: 0; width: 210mm; height: 2px; background-color: black;"></div>`;
-            html += `<div style="position: absolute; top: 120mm; left: 0; width: 210mm; height: 2px; background-color: black;"></div>`;
-            html += `<div style="position: absolute; top: 30mm; left: 73.5mm; width: 2px; height: 90mm; background-color: black;"></div>`;
+            const expiryDate = formatExpiryDate(data['AD']);
+            const englishExpiryText = expiryDate.english;
+            const chineseExpiryText = expiryDate.chinese;
+            const topDividerY = 30;
+            const lowerDividerY = 112;
+            const lowerSectionTop = 117;
+            const lowerLeftWidth = 112;
+            const lowerRightWidth = 82;
+
+            html += `<div style="position: absolute; top: ${topDividerY}mm; left: 0; width: 210mm; height: 2px; background-color: black;"></div>`;
+            html += `<div style="position: absolute; top: ${lowerDividerY}mm; left: 0; width: 210mm; height: 2px; background-color: black;"></div>`;
+            html += `<div style="position: absolute; top: ${topDividerY}mm; left: 73.5mm; width: 2px; height: ${lowerDividerY - topDividerY}mm; background-color: black;"></div>`;
             
             html += `<div style="position: absolute; top: 10mm; left: 6mm; width: 200mm;">`;
             if (data['A']) {
-                let barcodeFontSize = data['A'].length > 20 ? 18 : 20;
+                let barcodeFontSize = 20;
+                if (data['A'].length > 20) {
+                    barcodeFontSize = 18;
+                }
                 html += `<div style="font-size: ${barcodeFontSize}px; margin-bottom: 2mm;">${data['A']}</div>`;
             }
             if (data['B']) {
                 let productNameFontSize = 20;
-                if (data['B'].length > 50) productNameFontSize = 18;
-                else if (data['B'].length > 80) productNameFontSize = 16;
-                else if (data['B'].length > 120) productNameFontSize = 14;
+                if (data['B'].length > 50) {
+                    productNameFontSize = 18;
+                } else if (data['B'].length > 80) {
+                    productNameFontSize = 16;
+                } else if (data['B'].length > 120) {
+                    productNameFontSize = 14;
+                }
                 html += `<div style="font-size: ${productNameFontSize}px;">${data['B']}</div>`;
             }
             html += `</div>`;
             
-            html += `<div style="position: absolute; top: 35mm; left: 6mm; font-size: 14px; font-weight: bold;">Nutrition Information</div>`;
-            html += `<div style="position: absolute; top: 45mm; left: 6mm; width: 60mm; font-size: 12px;">`;
-            
-            const renderRow = (label, val, padding = false) => {
-                if(!val && !label.includes('Serving')) return '';
-                return `<div style="display: flex; justify-content: space-between; margin-bottom: 3mm; ${padding ? 'padding-left: 5mm;' : ''}">
-                    <span>${label}</span><span>${val||''}</span></div>`;
-            };
-            
-            html += renderRow('Serving Size:', data['AG']);
-            html += renderRow('Energy:', data['AJ']);
-            html += renderRow('Protein:', data['AK']);
-            html += renderRow('Total fat:', data['AL']);
-            html += renderRow('- Saturated fat:', data['AM'], true);
-            html += renderRow('- Trans fat:', data['AN'], true);
-            html += renderRow('Carbohydrates:', data['AO']);
-            html += renderRow('- Sugars:', data['AP'], true);
-            html += renderRow('Sodium:', data['AQ']);
-            html += renderRow('Net Content:', data['AE']);
-            html += renderRow('Country Of Origin:', data['X']);
+            html += `<div style="position: absolute; top: 35mm; left: 6mm; font-size: 13px; font-weight: bold;">Nutrition Information</div>`;
+            html += `<div style="position: absolute; top: 45mm; left: 6mm; width: 60mm; font-size: 11px;">`;
+
+            const servingSize = data['AG'] || '';
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 2mm;">`;
+            html += `<span>Serving Size:</span>`;
+            html += `<span>${servingSize}</span>`;
+            html += `</div>`;
+
+            const energy = data['AJ'] || '';
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 2mm;">`;
+            html += `<span>Energy:</span>`;
+            html += `<span>${energy}</span>`;
+            html += `</div>`;
+
+            const protein = data['AK'] || '';
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 2mm;">`;
+            html += `<span>Protein:</span>`;
+            html += `<span>${protein}</span>`;
+            html += `</div>`;
+
+            const totalFat = data['AL'] || '';
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 2mm;">`;
+            html += `<span>Total fat:</span>`;
+            html += `<span>${totalFat}</span>`;
+            html += `</div>`;
+
+            const satFat = data['AM'] || '';
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 2mm; padding-left: 5mm;">`;
+            html += `<span>- Saturated fat:</span>`;
+            html += `<span>${satFat}</span>`;
+            html += `</div>`;
+
+            const transFat = data['AN'] || '';
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 2mm; padding-left: 5mm;">`;
+            html += `<span>- Trans fat:</span>`;
+            html += `<span>${transFat}</span>`;
+            html += `</div>`;
+
+            const carbs = data['AO'] || '';
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 2mm;">`;
+            html += `<span>Carbohydrates:</span>`;
+            html += `<span>${carbs}</span>`;
+            html += `</div>`;
+
+            const sugars = data['AP'] || '';
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 2mm; padding-left: 5mm;">`;
+            html += `<span>- Sugars:</span>`;
+            html += `<span>${sugars}</span>`;
+            html += `</div>`;
+
+            const sodium = data['AQ'] || '';
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 2mm;">`;
+            html += `<span>Sodium:</span>`;
+            html += `<span>${sodium}</span>`;
+            html += `</div>`;
+
+            const netContent = data['AE'] || '';
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 2mm;">`;
+            html += `<span>Net Content:</span>`;
+            html += `<span>${netContent}</span>`;
+            html += `</div>`;
+
+            const country = data['X'] || '';
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 2mm;">`;
+            html += `<span>Country Of Origin:</span>`;
+            html += `<span>${country}</span>`;
+            html += `</div>`;
             html += `</div>`;
             
             if (data['I']) {
-                const containerWidth = 120 * 3.7795275591;
-                const containerHeight = 80 * 3.7795275591;
-                const fontSize = calculateFoodLabelRightFontSize(data['I'], containerWidth, containerHeight);
-                html += `<div style="position: absolute; top: 35mm; left: 79.5mm; width: 120mm; height: 80mm; font-size: ${fontSize}px;">${data['I']}</div>`;
+                const fontSize = 10;
+                html += `<div style="position: absolute; top: 35mm; left: 79.5mm; width: 120mm; height: 72mm; padding: 3mm 0; box-sizing: border-box; overflow: hidden; font-size: ${fontSize}px;">${data['I']}</div>`;
             }
             
-            html += `<div style="position: absolute; top: 125mm; left: 6mm; width: 120mm; height: 20mm; font-size: 18px;">${data['T'] || ''}</div>`;
-            html += `<div style="position: absolute; top: 125mm; right: 6mm; text-align: right; font-size: 16px;">
-                        <div>Best before(Date Format):</div>
-                        <div>Show on package(見包裝)</div>
-                        <div>此日期前最佳(Format CHI)</div>
-                     </div>`;
+            html += `<div style="position: absolute; top: ${lowerSectionTop}mm; left: 6mm; width: ${lowerLeftWidth}mm; height: 30mm; font-size: 18px; line-height: 1.2; overflow-wrap: anywhere;">${data['T'] || ''}</div>`;
+            html += `<div style="position: absolute; top: ${lowerSectionTop}mm; right: 6mm; width: ${lowerRightWidth}mm; text-align: right; font-size: 16px;">`;
+            html += `<div>Best before(${englishExpiryText})</div>`;
+            html += `<div>此日期前最佳(${chineseExpiryText})</div>`;
+            html += `<div>Show on package(見包裝)</div>`;
+            html += `</div>`;
             return html;
         }
 
@@ -897,17 +996,20 @@
             const tempElement = document.createElement('div');
             tempElement.style.position = 'absolute';
             tempElement.style.visibility = 'hidden';
-            tempElement.style.width = (containerWidth - 10) + 'px';
+            tempElement.style.width = containerWidth + 'px';
             tempElement.style.boxSizing = 'border-box';
             tempElement.textContent = text;
             document.body.appendChild(tempElement);
+
             let fontSize = maxFontSize;
             let height = 0;
+
             do {
                 tempElement.style.fontSize = fontSize + 'px';
                 height = tempElement.offsetHeight;
                 fontSize -= 1;
-            } while (height > (containerHeight - 10) && fontSize >= minFontSize);
+            } while (height > containerHeight && fontSize >= minFontSize);
+
             document.body.removeChild(tempElement);
             return Math.max(minFontSize, fontSize + 1);
         }
@@ -917,6 +1019,7 @@
             const leftWidth = 210 * 0.6;
             const rightWidth = 210 * 0.4;
             const rightTopHeight = 150 * 0.3;
+            const leftAvailableHeight = 150 - 20;
             const rightTopAvailableHeight = rightTopHeight - 20;
             const rightBottomAvailableHeight = 150 - rightTopHeight - 10;
             
@@ -926,18 +1029,28 @@
             html += `<div style="position: absolute; top: 10mm; left: 6mm; width: ${leftWidth - 12}mm;">`;
             const baseFontSize = 18;
             const minFontSize = 12;
-            let barcodeFontSize = (data['A'] && data['A'].length > 20) ? Math.max(minFontSize, baseFontSize - 2) : baseFontSize;
+
+            let barcodeFontSize = baseFontSize;
+            if (data['A'] && data['A'].length > 20) {
+                barcodeFontSize = Math.max(minFontSize, baseFontSize - 2);
+            }
+
             let productNameFontSize = baseFontSize;
             if (data['B']) {
-                if (data['B'].length > 120) productNameFontSize = Math.max(minFontSize, baseFontSize - 6);
-                else if (data['B'].length > 80) productNameFontSize = Math.max(minFontSize, baseFontSize - 4);
-                else if (data['B'].length > 50) productNameFontSize = Math.max(minFontSize, baseFontSize - 2);
+                if (data['B'].length > 50) {
+                    productNameFontSize = Math.max(minFontSize, baseFontSize - 2);
+                } else if (data['B'].length > 80) {
+                    productNameFontSize = Math.max(minFontSize, baseFontSize - 4);
+                } else if (data['B'].length > 120) {
+                    productNameFontSize = Math.max(minFontSize, baseFontSize - 6);
+                }
             }
             
             let ingredientFontSize = baseFontSize;
             if (data['I']) {
                 const ingredientContainerWidth = (leftWidth - 12) * 3.7795275591;
                 const ingredientAvailableHeight = 40 * 3.7795275591;
+
                 const tempIngredientElement = document.createElement('div');
                 tempIngredientElement.style.position = 'absolute';
                 tempIngredientElement.style.visibility = 'hidden';
@@ -945,31 +1058,47 @@
                 tempIngredientElement.style.boxSizing = 'border-box';
                 tempIngredientElement.textContent = data['I'];
                 document.body.appendChild(tempIngredientElement);
+
                 do {
                     tempIngredientElement.style.fontSize = ingredientFontSize + 'px';
-                    if (tempIngredientElement.offsetHeight <= ingredientAvailableHeight) break;
+                    const ingredientHeight = tempIngredientElement.offsetHeight;
+                    if (ingredientHeight <= ingredientAvailableHeight) break;
                     ingredientFontSize -= 1;
                 } while (ingredientFontSize >= minFontSize);
+
                 document.body.removeChild(tempIngredientElement);
             }
             
             const smallFontSize = Math.max(minFontSize, baseFontSize - 4);
             
-            if (data['A']) html += `<div style="font-size: ${barcodeFontSize}px; font-weight: bold; margin-bottom: 1mm;">${data['A']}</div>`;
-            if (data['B']) html += `<div style="font-size: ${productNameFontSize}px; font-weight: bold; margin-bottom: 4mm;">${data['B']}</div>`;
+            if (data['A']) {
+                html += `<div style="font-size: ${barcodeFontSize}px; font-weight: bold; margin-bottom: 1mm;">${data['A']}</div>`;
+            }
+            if (data['B']) {
+                html += `<div style="font-size: ${productNameFontSize}px; font-weight: bold; margin-bottom: 4mm;">${data['B']}</div>`;
+            }
             if (data['I']) {
-                html += `<div style="font-size: ${ingredientFontSize}px; margin-bottom: 3mm;">
-                    <div style="font-weight: bold; margin-bottom: 1mm;">Ingredient:</div>
-                    <div style="word-wrap: break-word;">${data['I']}</div></div>`;
+                html += `<div style="font-size: ${ingredientFontSize}px; margin-bottom: 3mm;">`;
+                html += `<div style="font-weight: bold; margin-bottom: 1mm;">Ingredient:</div>`;
+                html += `<div style="word-wrap: break-word;">${data['I']}</div>`;
+                html += `</div>`;
             }
             
             let bottomContentHtml = '';
-            if (data['AU']) bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 1mm;">Net Content: ${data['AU']}</div>`;
-            if (data['X']) bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 1mm;">Country Of Origin: ${data['X']}</div>`;
-            if (data['AS']) bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 1mm; word-wrap: break-word;">${data['AS']}</div>`;
-            if (data['T']) bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 1mm; word-wrap: break-word;">${data['T']}</div>`;
-            bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 0.5mm;">Best before(End YY-MM):</div>
-                                  <div style="font-size: ${smallFontSize}px; margin-bottom: 0.5mm;">Show on package(見包裝)</div>`;
+            if (data['AU']) {
+                bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 1mm;">Net Content: ${data['AU']}</div>`;
+            }
+            if (data['X']) {
+                bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 1mm;">Country Of Origin: ${data['X']}</div>`;
+            }
+            if (data['AS']) {
+                bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 1mm; word-wrap: break-word;">${data['AS']}</div>`;
+            }
+            if (data['T']) {
+                bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 1mm; word-wrap: break-word;">${data['T']}</div>`;
+            }
+            bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 0.5mm;">Best before(End YY-MM):</div>`;
+            bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 0.5mm;">Show on package(見包裝)</div>`;
             
             const tempBottomElement = document.createElement('div');
             tempBottomElement.style.position = 'absolute';
@@ -982,7 +1111,8 @@
             document.body.removeChild(tempBottomElement);
             
             html += `<div style="height: ${bottomContentHeight}px;">${bottomContentHtml}</div>`;
-            html += `<div style="font-size: ${smallFontSize}px;">此日期前最佳(年月底)</div></div>`;
+            html += `<div style="font-size: ${smallFontSize}px;">此日期前最佳(年月底)</div>`;
+            html += `</div>`;
             
             html += `<div style="position: absolute; top: 10mm; left: ${leftWidth + 6}mm; width: ${rightWidth - 12}mm;">`;
             const rightTopContent = `Nutrition Information\nServing Size:\n${data['AV'] || ''}\n${data['AH'] || ''}`;
@@ -992,45 +1122,87 @@
             
             html += `<div style="font-size: ${rightTopFontSize}px; font-weight: bold; margin-bottom: 6mm;">Nutrition Information</div>`;
             if (data['AV']) {
-                html += `<div style="font-size: ${rightTopFontSize}px; margin-bottom: 6mm;">Serving Size:</div>
-                         <div style="font-size: ${rightTopFontSize}px; margin-bottom: 12mm;">${data['AV']}</div>`;
+                html += `<div style="font-size: ${rightTopFontSize}px; margin-bottom: 3mm;">Serving Size:</div>`;
+                html += `<div style="font-size: ${rightTopFontSize}px; margin-bottom: 6mm;">${data['AV']}</div>`;
             }
-            if (data['AH']) html += `<div style="font-size: ${rightTopFontSize}px; margin-bottom: 8mm;">${data['AH']}</div>`;
-            
-            const renderRightRow = (label, val) => val ? `<div style="font-size: ${rightBottomFontSize}px; margin-bottom: 4mm;">${label}: ${val}</div>` : '';
-            html += renderRightRow('Energy', data['AJ']);
-            html += renderRightRow('Protein', data['AK']);
-            html += renderRightRow('Total Fat', data['AL']);
-            html += renderRightRow('Saturated', data['AM']);
-            html += renderRightRow('Trans Fat', data['AN']);
-            html += renderRightRow('Carbohydrate', data['AO']);
-            html += renderRightRow('Sugars', data['AP']);
-            if(data['AQ']) html += `<div style="font-size: ${rightBottomFontSize}px;">Sodium: ${data['AQ']}</div>`;
+            if (data['AH']) {
+                html += `<div style="font-size: ${rightTopFontSize}px; margin-bottom: 4mm;">${data['AH']}</div>`;
+            }
+            if (data['AJ']) {
+                html += `<div style="font-size: ${rightBottomFontSize}px; margin-bottom: 2mm;">Energy: ${data['AJ']}</div>`;
+            }
+            if (data['AK']) {
+                html += `<div style="font-size: ${rightBottomFontSize}px; margin-bottom: 2mm;">Protein: ${data['AK']}</div>`;
+            }
+            if (data['AL']) {
+                html += `<div style="font-size: ${rightBottomFontSize}px; margin-bottom: 2mm;">Total Fat: ${data['AL']}</div>`;
+            }
+            if (data['AM']) {
+                html += `<div style="font-size: ${rightBottomFontSize}px; margin-bottom: 2mm;">Saturated: ${data['AM']}</div>`;
+            }
+            if (data['AN']) {
+                html += `<div style="font-size: ${rightBottomFontSize}px; margin-bottom: 2mm;">Trans Fat: ${data['AN']}</div>`;
+            }
+            if (data['AO']) {
+                html += `<div style="font-size: ${rightBottomFontSize}px; margin-bottom: 2mm;">Carbohydrate: ${data['AO']}</div>`;
+            }
+            if (data['AP']) {
+                html += `<div style="font-size: ${rightBottomFontSize}px; margin-bottom: 2mm;">Sugars: ${data['AP']}</div>`;
+            }
+            if (data['AQ']) {
+                html += `<div style="font-size: ${rightBottomFontSize}px;">Sodium: ${data['AQ']}</div>`;
+            }
             
             html += `</div>`;
             return html;
         }
 
         function renderSpecialLabel(data) {
-            let html = `<table style="width: 100%; border-collapse: collapse; margin: 2mm 6mm;">`;
-            const getFontSize = (val) => {
-                if (val.length > 350) return 10;
-                if (val.length > 250) return 12;
-                if (val.length > 150) return 14;
-                if (val.length > 80) return 16;
-                return 18;
-            };
-            
-            ["A", "B"].forEach(field => {
-                if (data[field]) {
-                    html += `<tr><td style="width: 100%; font-size: ${getFontSize(data[field])}px; padding: 1mm 0; vertical-align: top; padding-right: 10mm;">${data[field]}</td></tr>`;
+            let html = '';
+            html += `<table style="width: 100%; border-collapse: collapse; margin: 2mm 6mm;">`;
+
+            const topFields = ["A", "B"];
+            topFields.forEach(field => {
+                const value = data[field] || '';
+                if (value) {
+                    let fontSize = 18;
+                    if (value.length > 80) {
+                        fontSize = 16;
+                    } else if (value.length > 150) {
+                        fontSize = 14;
+                    } else if (value.length > 250) {
+                        fontSize = 12;
+                    } else if (value.length > 350) {
+                        fontSize = 10;
+                    }
+
+                    html += `<tr>`;
+                    html += `<td style="width: 100%; font-size: ${fontSize}px; padding: 1mm 0; vertical-align: top; padding-right: 10mm;">${value}</td>`;
+                    html += `</tr>`;
                 }
             });
-            ["AW", "AS", "AU", "I", "AY"].forEach(field => {
-                if (data[field]) {
-                    html += `<tr><td style="width: 100%; font-size: ${getFontSize(data[field])}px; padding: 2mm 0; vertical-align: top; padding-right: 10mm;">${data[field]}</td></tr>`;
+
+            const otherFields = ["AW", "AS", "AU", "I", "AY"];
+            otherFields.forEach(field => {
+                const value = data[field] || '';
+                if (value) {
+                    let fontSize = 18;
+                    if (value.length > 80) {
+                        fontSize = 16;
+                    } else if (value.length > 150) {
+                        fontSize = 14;
+                    } else if (value.length > 250) {
+                        fontSize = 12;
+                    } else if (value.length > 350) {
+                        fontSize = 10;
+                    }
+
+                    html += `<tr>`;
+                    html += `<td style="width: 100%; font-size: ${fontSize}px; padding: 2mm 0; vertical-align: top; padding-right: 10mm;">${value}</td>`;
+                    html += `</tr>`;
                 }
             });
+
             html += `</table>`;
             return html;
         }
@@ -1056,50 +1228,142 @@
         }
 
         function renderOrdinaryLabel(data) {
-            if (!data['AS']) return '';
-            const containerWidth = 210 - 12;
-            const containerHeight = 150 - 20;
-            const fontSize = calculateFontSize(data['AS'], containerWidth * 3.7795275591, containerHeight * 3.7795275591);
-            return `<table style="width: 100%; border-collapse: collapse; margin: 10mm 6mm;"><tr>
-                <td style="width: 100%; font-size: ${fontSize}px; padding: 3mm 0; vertical-align: top; padding-right: 10mm;">${data['AS']}</td>
-                </tr></table>`;
+            let html = '';
+
+            const asContent = data['AS'] || '';
+
+            if (asContent) {
+                const containerWidth = 210 - 12;
+                const containerHeight = 150 - 20;
+                const fontSize = calculateFontSize(asContent, containerWidth * 3.7795275591, containerHeight * 3.7795275591);
+
+                html += `<table style="width: 100%; border-collapse: collapse; margin: 10mm 6mm;">`;
+                html += `<tr>`;
+                html += `<td style="width: 100%; font-size: ${fontSize}px; padding: 3mm 0; vertical-align: top; padding-right: 10mm;">${asContent}</td>`;
+                html += `</tr>`;
+                html += `</table>`;
+            }
+
+            return html;
         }
 
-        // Print functionality
-        document.getElementById('printBtn').addEventListener('click', function() {
-            if (!currentLabel) return;
+        function printLabel(barcode) {
+            if (!labelData[barcode]) {
+                showToast(translations[currentLang].alerts.labelNotFound.replace('{barcode}', barcode), 'error');
+                return;
+            }
+
+            const label = labelData[barcode];
             const printWindow = window.open('', '_blank');
             printWindow.document.open();
             
-            let printContent = `<!DOCTYPE html><html><head><title>Print Label</title><style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                @page { size: 70mm 50mm; margin: 0; }
-                body { margin: 0; padding: 0; font-family: 'Microsoft YaHei', Arial, sans-serif; width: 70mm; height: 50mm; overflow: hidden; }
-                .label { width: 70mm; height: 50mm; border: 1px solid #000; background-color: white; position: relative; overflow: hidden; }
-                .label-content { position: absolute; top: 0; left: 0; right: 0; bottom: 0; font-family: 'Microsoft YaHei', Arial, sans-serif; font-size: 12px; line-height: 1.2; transform: scale(0.333); transform-origin: top left; width: 300%; height: 300%; }
-                @media print {
-                    body { padding: 0; }
-                    .label { box-shadow: none; border: 1px solid #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                }
-                </style></head><body>`;
-                
-            const labelType = getLabelType(currentLabel);
+            let printContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Print Label</title>
+                    <style>
+                        * {
+                            margin: 0;
+                            padding: 0;
+                            box-sizing: border-box;
+                        }
+                        @page {
+                            size: 70mm 50mm;
+                            margin: 0;
+                        }
+                        body {
+                            margin: 0;
+                            padding: 0;
+                            font-family: 'Microsoft YaHei', Arial, sans-serif;
+                            width: 70mm;
+                            height: 50mm;
+                            overflow: hidden;
+                        }
+                        .label {
+                            width: 70mm;
+                            height: 50mm;
+                            border: 1px solid #000;
+                            background-color: white;
+                            position: relative;
+                            overflow: hidden;
+                        }
+                        .label-content {
+                            position: absolute;
+                            top: 0;
+                            left: 0;
+                            right: 0;
+                            bottom: 0;
+                            font-family: 'Microsoft YaHei', Arial, sans-serif;
+                            font-size: 12px;
+                            line-height: 1.2;
+                            transform: scale(0.333);
+                            transform-origin: top left;
+                            width: 300%;
+                            height: 300%;
+                        }
+                        @media print {
+                            body {
+                                padding: 0;
+                            }
+                            .label {
+                                box-shadow: none;
+                                border: 1px solid #000 !important;
+                                -webkit-print-color-adjust: exact;
+                                print-color-adjust: exact;
+                            }
+                            * {
+                                -webkit-print-color-adjust: exact;
+                                print-color-adjust: exact;
+                            }
+                        }
+                    </style>
+                </head>
+                <body>
+            `;
+
+            const labelType = getLabelType(label);
             let labelHtml = '';
             switch (labelType) {
-                case 'food_label': labelHtml = renderFoodLabel(currentLabel); break;
-                case 'health_food': labelHtml = renderHealthFoodLabel(currentLabel); break;
-                case 'special_label': labelHtml = renderSpecialLabel(currentLabel); break;
-                case 'ordinary_label': default: labelHtml = renderOrdinaryLabel(currentLabel); break;
+                case 'food_label':
+                    labelHtml = renderFoodLabel(label);
+                    break;
+                case 'health_food':
+                    labelHtml = renderHealthFoodLabel(label);
+                    break;
+                case 'special_label':
+                    labelHtml = renderSpecialLabel(label);
+                    break;
+                case 'ordinary_label':
+                default:
+                    labelHtml = renderOrdinaryLabel(label);
+                    break;
             }
-            printContent += `<div class="label"><div class="label-content">${labelHtml}</div></div></body></html>`;
+
+            printContent += `<div class="label"><div class="label-content">${labelHtml}</div></div>`;
+            printContent += `
+                </body>
+                </html>
+            `;
             
             printWindow.document.write(printContent);
             printWindow.document.close();
             printWindow.onload = function() {
-                printWindow.print();
-                printWindow.close();
+                try {
+                    printWindow.print();
+                    setTimeout(() => {
+                        printWindow.close();
+                    }, 500);
+                } catch (error) {
+                    showToast('Printing failed: No printer detected', 'error');
+                    printWindow.close();
+                }
             };
+        }
+
+        document.getElementById('printBtn').addEventListener('click', function() {
+            if (!currentLabel) return;
+            printLabel(currentBarcode || (currentLabel['A'] ? currentLabel['A'].toString().trim() : ''));
         });
 
         document.addEventListener('DOMContentLoaded', function() {
