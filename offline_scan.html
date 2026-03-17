@@ -1573,13 +1573,26 @@
             if (allCompleted) completeOrder();
         }
 
+        function ensureBarcodeInputFocus() {
+            if (!barcodeInput || barcodeInput.disabled) return;
+            setTimeout(() => {
+                barcodeInput.focus();
+            }, 0);
+        }
+
         barcodeInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                ensureBarcodeInputFocus();
+                return;
+            }
+
             if (e.key === 'Enter') {
                 const barcode = this.value.trim();
                 if (barcode) {
                     scanBarcode(barcode);
                     this.value = '';
-                    this.focus();
+                    ensureBarcodeInputFocus();
                 }
             }
         });
@@ -1638,6 +1651,7 @@
 
             if (blockedByQuantity) {
                 showAlert(translations[currentLang].alerts.outboundQtyExceeded, 'info');
+                ensureBarcodeInputFocus();
                 return;
             }
             
@@ -1650,6 +1664,8 @@
             } else {
                 showAlert(translations[currentLang].alerts.noMatchingProduct.replace('{barcode}', barcode), 'error');
             }
+
+            ensureBarcodeInputFocus();
         }
 
         function highlightRow(index) {

@@ -2730,7 +2730,22 @@
         }
 
         // 扫描条码
+        function ensureBarcodeInputFocus() {
+            if (!barcodeInput || barcodeInput.disabled) {
+                return;
+            }
+            setTimeout(() => {
+                barcodeInput.focus();
+            }, 0);
+        }
+
         barcodeInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                ensureBarcodeInputFocus();
+                return;
+            }
+
             if (e.key === 'Enter') {
                 const barcode = this.value.trim();
                 if (barcode) {
@@ -2738,7 +2753,7 @@
                     
                     // 清空输入框并继续聚焦
                     this.value = '';
-                    this.focus();
+                    ensureBarcodeInputFocus();
                 }
             }
         });
@@ -2817,11 +2832,7 @@
 
             if (blockedByQuantity) {
                 showAlert(translations[currentLang].alerts.outboundQtyExceeded, 'info');
-
-                // 超量扫码不计数不走出库流程，但仍保留自动打印能力
-                if (autoPrintToggle.checked && labelData[barcode]) {
-                    printLabel(barcode);
-                }
+                ensureBarcodeInputFocus();
                 return;
             }
             
@@ -2873,6 +2884,8 @@
                     printLabel(barcode);
                 }
             }
+
+            ensureBarcodeInputFocus();
         }
 
         // 高亮行
@@ -3230,6 +3243,7 @@
                 if (cleaned) return;
                 cleaned = true;
                 window.focus();
+                ensureBarcodeInputFocus();
                 setTimeout(() => {
                     if (printFrame.parentNode) {
                         printFrame.parentNode.removeChild(printFrame);

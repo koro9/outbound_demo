@@ -197,6 +197,41 @@
             text-align: center;
         }
 
+        .print-controls {
+            display: flex;
+            align-items: flex-end;
+            gap: 12px;
+        }
+
+        .print-qty-group {
+            width: 110px;
+        }
+
+        .print-qty-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #4a5568;
+            text-align: center;
+        }
+
+        .print-qty-group input {
+            width: 100%;
+            padding: 8px 10px;
+            font-size: 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            text-align: center;
+            background-color: white;
+        }
+
+        .print-qty-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
         .btn {
             padding: 10px 28px;
             font-size: 16px;
@@ -387,6 +422,15 @@
             .qty-group {
                 width: 100%;
             }
+
+            .print-controls {
+                width: 100%;
+                justify-content: flex-end;
+            }
+
+            .print-qty-group {
+                width: 120px;
+            }
         }
     </style>
 </head>
@@ -420,7 +464,13 @@
             <div class="label-preview-section" style="flex: 3;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <h2>Label Preview</h2>
-                    <button class="btn btn-primary" id="printBtn" disabled>🖨️ Print Label</button>
+                    <div class="print-controls">
+                        <div class="print-qty-group">
+                            <label for="printQtyInput">Print Qty</label>
+                            <input type="number" id="printQtyInput" min="1" step="1" value="1">
+                        </div>
+                        <button class="btn btn-primary" id="printBtn" disabled>🖨️ Print Label</button>
+                    </div>
                 </div>
                 <div class="label-container" id="labelContainer">
                     <div class="label-content" id="labelContent">
@@ -449,6 +499,7 @@
                 },
                 preview: {
                     title: 'Label Preview',
+                    printQtyLabel: 'Print Qty',
                     print: '🖨️ Print Label',
                     scanToPreview: 'Scan barcode to preview label'
                 },
@@ -475,6 +526,7 @@
                 },
                 preview: {
                     title: '標籤預覽',
+                    printQtyLabel: '列印份數',
                     print: '🖨️ 列印標籤',
                     scanToPreview: '掃描條碼預覽標籤'
                 },
@@ -499,6 +551,7 @@
         const labelContainer = document.getElementById('labelContainer');
         const labelContent = document.getElementById('labelContent');
         const printBtn = document.getElementById('printBtn');
+        const printQtyInput = document.getElementById('printQtyInput');
         const toastContainer = document.getElementById('toastContainer');
 
         // ==================From Ben========================
@@ -603,6 +656,7 @@
             document.querySelector('label[for="barcodeInput"]').textContent = translations[lang].scan.barcode;
             barcodeInput.placeholder = translations[lang].scan.placeholder;
             document.querySelector('.label-preview-section h2').textContent = translations[lang].preview.title;
+            document.querySelector('label[for="printQtyInput"]').textContent = translations[lang].preview.printQtyLabel;
             printBtn.textContent = translations[lang].preview.print;
             
             if (!currentBarcode) {
@@ -1247,13 +1301,26 @@
             return html;
         }
 
-        function printLabel(barcode) {
+        function getPrintCopies() {
+            const copies = parseInt(printQtyInput.value, 10);
+            if (isNaN(copies) || copies < 1) {
+                return 1;
+            }
+            return copies;
+        }
+
+        printQtyInput.addEventListener('change', function() {
+            this.value = getPrintCopies();
+        });
+
+        function printLabel(barcode, copies = 1) {
             if (!labelData[barcode]) {
                 showToast(translations[currentLang].alerts.labelNotFound.replace('{barcode}', barcode), 'error');
                 return;
             }
 
             const label = labelData[barcode];
+            const printCopies = Math.max(1, parseInt(copies, 10) || 1);
             const printFrame = document.createElement('iframe');
             printFrame.style.position = 'fixed';
             printFrame.style.right = '0';
@@ -1287,17 +1354,22 @@
                             margin: 0;
                             padding: 0;
                             font-family: 'Microsoft YaHei', Arial, sans-serif;
-                            width: 70mm;
-                            height: 50mm;
-                            overflow: hidden;
+                            background-color: white;
                         }
                         .label {
+                            display: block;
                             width: 70mm;
                             height: 50mm;
                             border: none;
                             background-color: white;
                             position: relative;
                             overflow: hidden;
+                            page-break-after: always;
+                            break-after: page;
+                        }
+                        .label:last-child {
+                            page-break-after: auto;
+                            break-after: auto;
                         }
                         .label-content {
                             position: absolute;
@@ -1354,8 +1426,8 @@
                     labelHtml = renderOrdinaryLabel(label);
                     break;
             }
-
-            printContent += `<div class="label"><div class="label-content">${labelHtml}</div></div>`;
+            const singleLabelHtml = `<div class="label"><div class="label-content">${labelHtml}</div></div>`;
+            printContent += singleLabelHtml.repeat(printCopies);
             printContent += `
                 </body>
                 </html>
@@ -1397,7 +1469,9 @@
 
         document.getElementById('printBtn').addEventListener('click', function() {
             if (!currentLabel) return;
-            printLabel(currentBarcode || (currentLabel['A'] ? currentLabel['A'].toString().trim() : ''));
+            const copies = getPrintCopies();
+            printQtyInput.value = copies;
+            printLabel(currentBarcode || (currentLabel['A'] ? currentLabel['A'].toString().trim() : ''), copies);
         });
 
         document.addEventListener('DOMContentLoaded', function() {
