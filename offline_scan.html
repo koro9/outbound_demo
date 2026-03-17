@@ -568,7 +568,7 @@
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
@@ -643,10 +643,6 @@
             <div class="stat-card success">
                 <h3 id="correctCount">0</h3>
                 <p>Success</p>
-            </div>
-            <div class="stat-card error">
-                <h3 id="errorCount">0</h3>
-                <p>Error</p>
             </div>
             <div class="stat-card pending">
                 <h3 id="pendingCount">0</h3>
@@ -942,9 +938,8 @@
             document.querySelector('h1').textContent = translations[lang].header;
             
             document.querySelector('.stat-card:nth-child(1) p').textContent = translations[lang].stats.success;
-            document.querySelector('.stat-card:nth-child(2) p').textContent = translations[lang].stats.error;
-            document.querySelector('.stat-card:nth-child(3) p').textContent = translations[lang].stats.pending;
-            document.querySelector('.stat-card:nth-child(4) p').textContent = translations[lang].stats.total;
+            document.querySelector('.stat-card:nth-child(2) p').textContent = translations[lang].stats.pending;
+            document.querySelector('.stat-card:nth-child(3) p').textContent = translations[lang].stats.total;
             
             document.querySelector('label[for="orderExcel"]').textContent = translations[lang].upload.orderFile;
             document.querySelector('label[for="skuExcel"]').textContent = translations[lang].upload.skuFile;
@@ -1029,7 +1024,6 @@
         const clearDataBtn = document.getElementById('clearDataBtn');
 
         const correctCountEl = document.getElementById('correctCount');
-        const errorCountEl = document.getElementById('errorCount');
         const pendingCountEl = document.getElementById('pendingCount');
         const totalCountEl = document.getElementById('totalCount');
 
@@ -1770,7 +1764,6 @@
             
             const orders = Object.values(allOrders);
             correctCountEl.textContent = orders.filter(o => o.status === 'completed').length;
-            errorCountEl.textContent = 0;
             pendingCountEl.textContent = orders.filter(o => o.status !== 'completed').length;
             totalCountEl.textContent = orders.length;
         }
