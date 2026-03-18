@@ -832,8 +832,15 @@
                 if (barcode) {
                     loadLabel(barcode);
                     this.value = '';
-                    this.focus();
+                    printQtyInput.focus();
                 }
+            }
+        });
+
+        // 監聽列印數量欄的 Enter 鍵
+        printQtyInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !printBtn.disabled) {
+                printBtn.click();
             }
         });
 
@@ -848,7 +855,7 @@
             printBtn.disabled = false;
         }
 
-        // --- Render Functions (保持原樣) ---
+        // --- Render Functions ---
         function renderLabel(labelData) {
             const labelType = getLabelType(labelData);
             let contentHtml = '';
@@ -905,25 +912,6 @@
                 english,
                 chinese: hasDay ? '年-月-日' : '年-月'
             };
-        }
-
-        function calculateFoodLabelRightFontSize(text, containerWidth, containerHeight, maxFontSize = 48, minFontSize = 12) {
-            const tempElement = document.createElement('div');
-            tempElement.style.position = 'absolute';
-            tempElement.style.visibility = 'hidden';
-            tempElement.style.width = (containerWidth - 10) + 'px';
-            tempElement.style.boxSizing = 'border-box';
-            tempElement.textContent = text;
-            document.body.appendChild(tempElement);
-            let fontSize = maxFontSize;
-            let height = 0;
-            do {
-                tempElement.style.fontSize = fontSize + 'px';
-                height = tempElement.offsetHeight;
-                fontSize -= 1;
-            } while (height > (containerHeight - 10) && fontSize >= minFontSize);
-            document.body.removeChild(tempElement);
-            return Math.max(minFontSize, fontSize + 1);
         }
 
         function renderFoodLabel(data) {
@@ -1033,7 +1021,7 @@
             html += `</div>`;
             
             if (data['I']) {
-                const fontSize = 12;
+                const fontSize = 14;
                 html += `<div style="position: absolute; top: 35mm; left: 79.5mm; width: 120mm; height: 72mm; padding: 3mm 0; box-sizing: border-box; overflow: hidden; font-size: ${fontSize}px;">${data['I']}</div>`;
             }
             
@@ -1283,7 +1271,6 @@
 
         function renderOrdinaryLabel(data) {
             let html = '';
-
             const asContent = data['AS'] || '';
 
             if (asContent) {
@@ -1313,28 +1300,23 @@
             this.value = getPrintCopies();
         });
 
-        function printLabel(barcode, copies = 1) {
-            if (!labelData[barcode]) {
-                showToast(translations[currentLang].alerts.labelNotFound.replace('{barcode}', barcode), 'error');
-                return;
+        document.getElementById('printBtn').addEventListener('click', function() {
+            if (!currentLabel) return;
+            const copies = getPrintCopies();
+            
+            // 使用隱藏的 iframe 替代新開視窗，實現「秒進列印」且不跳轉分頁
+            let printIframe = document.getElementById('hidden-print-iframe');
+            if (!printIframe) {
+                printIframe = document.createElement('iframe');
+                printIframe.id = 'hidden-print-iframe';
+                printIframe.style.position = 'absolute';
+                printIframe.style.top = '-9999px';
+                printIframe.style.left = '-9999px';
+                printIframe.style.width = '0';
+                printIframe.style.height = '0';
+                printIframe.style.border = 'none';
+                document.body.appendChild(printIframe);
             }
-
-            const label = labelData[barcode];
-            const printCopies = Math.max(1, parseInt(copies, 10) || 1);
-            const printFrame = document.createElement('iframe');
-            printFrame.style.position = 'fixed';
-            printFrame.style.left = '-9999px';
-            printFrame.style.top = '0';
-            printFrame.style.width = '265px';   // 70mm @ 96dpi — needed for 300% scale trick
-            printFrame.style.height = (printCopies * 190 + 20) + 'px'; // 50mm per copy
-            printFrame.style.border = '0';
-            printFrame.style.visibility = 'hidden';
-            printFrame.style.pointerEvents = 'none';
-            document.body.appendChild(printFrame);
-
-            const frameWindow = printFrame.contentWindow;
-            const frameDocument = frameWindow.document;
-            frameDocument.open();
             
             let printContent = `
                 <!DOCTYPE html>
@@ -1342,155 +1324,58 @@
                 <head>
                     <title>Print Label</title>
                     <style>
-                        * {
-                            margin: 0;
-                            padding: 0;
-                            box-sizing: border-box;
+                        * { margin: 0; padding: 0; box-sizing: border-box; }
+                        @page { size: 70mm 50mm; margin: 0; }
+                        html, body { width: 70mm; margin: 0; padding: 0; font-family: 'Microsoft YaHei', Arial, sans-serif; background-color: white; }
+                        .print-page { width: 70mm; height: 50mm; overflow: hidden; page-break-after: always; break-after: page; position: relative; }
+                        .print-page:last-child { page-break-after: auto; break-after: auto; }
+                        .label { display: block; width: 70mm; height: 50mm; border: none; background-color: white; position: relative; overflow: hidden; }
+                        .label-content { 
+                            position: absolute; top: 0; left: 0; width: 210mm; height: 150mm; 
+                            font-size: 12px; line-height: 1.2; 
+                            /* 解決 Chrome 列印引擎高度裁切 Bug */
+                            zoom: 0.33333333; 
                         }
-                        @page {
-                            size: 70mm 50mm;
-                            margin: 0;
+                        @supports not (zoom: 1) {
+                            .label-content { transform-origin: 0 0; transform: scale(0.33333333); }
                         }
-                        html {
-                            width: 70mm;
-                            margin: 0;
-                            padding: 0;
-                        }
-                        body {
-                            margin: 0;
-                            padding: 0;
-                            font-family: 'Microsoft YaHei', Arial, sans-serif;
-                            background-color: white;
-                            width: 70mm;
-                        }
-                        .print-page {
-                            width: 70mm;
-                            height: 50mm;
-                            overflow: hidden;
-                            page-break-after: always;
-                            break-after: page;
-                        }
-                        .print-page:last-child {
-                            page-break-after: auto;
-                            break-after: auto;
-                        }
-                        .label {
-                            display: block;
-                            width: 70mm;
-                            height: 50mm;
-                            border: none;
-                            background-color: white;
-                            position: relative;
-                            overflow: hidden;
-                        }
-                        .label-content {
-                            position: absolute;
-                            top: 0;
-                            left: 0;
-                            right: 0;
-                            bottom: 0;
-                            font-family: 'Microsoft YaHei', Arial, sans-serif;
-                            font-size: 12px;
-                            line-height: 1.2;
-                            transform: scale(0.333);
-                            transform-origin: top left;
-                            width: 300%;
-                            height: 300%;
-                        }
-                        .label-content,
-                        .label-content * {
-                            font-weight: 700 !important;
-                        }
+                        /* 保留強制粗體設定 */
+                        .label-content, .label-content * { font-weight: 700 !important; }
                         @media print {
-                            html,
-                            body {
-                                width: 70mm;
-                                padding: 0;
-                                margin: 0;
-                            }
-                            .print-page {
-                                width: 70mm;
-                                height: 50mm;
-                            }
-                            .label {
-                                box-shadow: none;
-                                border: none !important;
-                                -webkit-print-color-adjust: exact;
-                                print-color-adjust: exact;
-                            }
-                            * {
-                                -webkit-print-color-adjust: exact;
-                                print-color-adjust: exact;
-                            }
+                            .label { box-shadow: none; border: none !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                         }
                     </style>
                 </head>
                 <body>
             `;
 
-            const labelType = getLabelType(label);
+            const labelType = getLabelType(currentLabel);
             let labelHtml = '';
             switch (labelType) {
-                case 'food_label':
-                    labelHtml = renderFoodLabel(label);
-                    break;
-                case 'health_food':
-                    labelHtml = renderHealthFoodLabel(label);
-                    break;
-                case 'special_label':
-                    labelHtml = renderSpecialLabel(label);
-                    break;
-                case 'ordinary_label':
-                default:
-                    labelHtml = renderOrdinaryLabel(label);
-                    break;
+                case 'food_label': labelHtml = renderFoodLabel(currentLabel); break;
+                case 'health_food': labelHtml = renderHealthFoodLabel(currentLabel); break;
+                case 'special_label': labelHtml = renderSpecialLabel(currentLabel); break;
+                case 'ordinary_label': default: labelHtml = renderOrdinaryLabel(currentLabel); break;
             }
-            const singleLabelHtml = `<div class="print-page"><div class="label"><div class="label-content">${labelHtml}</div></div></div>`;
-            printContent += singleLabelHtml.repeat(printCopies);
-            printContent += `
-                </body>
-                </html>
-            `;
             
-            frameDocument.write(printContent);
-            frameDocument.close();
+            const singleLabelHtml = `<div class="print-page"><div class="label"><div class="label-content">${labelHtml}</div></div></div>`;
+            printContent += singleLabelHtml.repeat(copies);
+            printContent += `</body></html>`;
+            
+            const doc = printIframe.contentWindow.document;
+            doc.open();
+            doc.write(printContent);
+            doc.close();
 
-            let cleaned = false;
-            const cleanupPrintFrame = () => {
-                if (cleaned) return;
-                cleaned = true;
-                window.focus();
+            printIframe.contentWindow.focus();
+            setTimeout(function() {
+                printIframe.contentWindow.print();
                 setTimeout(() => {
-                    if (printFrame.parentNode) {
-                        printFrame.parentNode.removeChild(printFrame);
-                    }
-                }, 0);
-            };
-
-            const startPrint = () => {
-                try {
-                    frameWindow.onafterprint = cleanupPrintFrame;
-                    frameWindow.focus();
-                    frameWindow.print();
-                    setTimeout(cleanupPrintFrame, 1000);
-                } catch (error) {
-                    showToast('Printing failed: No printer detected', 'error');
-                    cleanupPrintFrame();
-                }
-            };
-
-            if (frameDocument.readyState === 'complete') {
-                setTimeout(startPrint, 50);
-            } else {
-                printFrame.onload = startPrint;
-            }
-        }
-
-        document.getElementById('printBtn').addEventListener('click', function() {
-            if (!currentLabel) return;
-            const copies = getPrintCopies();
-            printQtyInput.value = copies;
-            printLabel(currentBarcode || (currentLabel['A'] ? currentLabel['A'].toString().trim() : ''), copies);
+                    window.focus();
+                    document.getElementById('barcodeInput').focus();
+                }, 100);
+            }, 50);
         });
 
         document.addEventListener('DOMContentLoaded', function() {
