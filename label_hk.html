@@ -324,6 +324,11 @@
             font-family: 'Microsoft YaHei', Arial, sans-serif;
             font-size: 12px;
             line-height: 1.2;
+            font-weight: bold; /* 全部強制粗體 */
+        }
+        
+        .label-content * {
+            font-weight: bold !important; /* 確保內部所有元素都是粗體 */
         }
 
         .label-content h3 {
@@ -445,12 +450,12 @@
             <button class="lang-btn" data-lang="yue">中文</button>
         </div>
 
-        <!-- 右上角弹框提示 -->
+        <!-- 右上角彈框提示 -->
         <div style="position: fixed; top: 20px; right: 20px; z-index: 1000; max-width: 350px;" id="toastContainer"></div>
 
-        <!-- 数据输入块和预览区域 -->
+        <!-- 數據輸入塊和預覽區域 -->
         <div style="display: flex; gap: 20px; align-items: flex-start;">
-            <!-- 上传和扫描区域 -->
+            <!-- 上傳和掃描區域 -->
             <div style="flex: 1; max-width: 300px; padding: 20px; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); border-radius: 12px; border: 2px solid #e2e8f0;">
                 <input type="file" id="labelExcel" accept=".xlsx,.xls" style="display: none;">
                 <button class="btn btn-primary" id="uploadBtn" style="width: 100%; margin-bottom: 15px;">未上傳label excel</button>
@@ -460,7 +465,7 @@
                 </div>
             </div>
 
-            <!-- 标签预览区域 -->
+            <!-- 標籤預覽區域 -->
             <div class="label-preview-section" style="flex: 3;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <h2>Label Preview</h2>
@@ -1034,168 +1039,119 @@
             return html;
         }
 
-        function calculateHealthFoodLabelFontSize(text, containerWidth, containerHeight, maxFontSize = 48, minFontSize = 12) {
-            const tempElement = document.createElement('div');
-            tempElement.style.position = 'absolute';
-            tempElement.style.visibility = 'hidden';
-            tempElement.style.width = containerWidth + 'px';
-            tempElement.style.boxSizing = 'border-box';
-            tempElement.textContent = text;
-            document.body.appendChild(tempElement);
-
-            let fontSize = maxFontSize;
-            let height = 0;
-
-            do {
-                tempElement.style.fontSize = fontSize + 'px';
-                height = tempElement.offsetHeight;
-                fontSize -= 1;
-            } while (height > containerHeight && fontSize >= minFontSize);
-
-            document.body.removeChild(tempElement);
-            return Math.max(minFontSize, fontSize + 1);
-        }
-
+        // ====== 重新編排過且修正重疊問題的 Health Food Label ======
         function renderHealthFoodLabel(data) {
             let html = '';
-            const leftWidth = 210 * 0.6;
-            const rightWidth = 210 * 0.4;
-            const rightTopHeight = 150 * 0.3;
-            const leftAvailableHeight = 150 - 20;
-            const rightTopAvailableHeight = rightTopHeight - 20;
-            const rightBottomAvailableHeight = 150 - rightTopHeight - 10;
+            const leftWidth = 210 * 0.6; // 126mm
+            const rightWidth = 210 * 0.4; // 84mm
+            const rightTopHeight = 150 * 0.3; // 45mm
+            const rightBottomHeight = 150 * 0.7; // 105mm
             
+            // 畫黑線
             html += `<div style="position: absolute; top: 0; left: ${leftWidth}mm; width: 2px; height: 150mm; background-color: black;"></div>`;
             html += `<div style="position: absolute; top: ${rightTopHeight}mm; left: ${leftWidth}mm; width: ${rightWidth}mm; height: 2px; background-color: black;"></div>`;
             
-            html += `<div style="position: absolute; top: 10mm; left: 6mm; width: ${leftWidth - 12}mm;">`;
+            // ==== 左側區塊 ====
+            // 使用 Flexbox 來讓底部資訊自動貼齊下方，不會再因為手動算高度而導致排版跑掉
+            html += `<div style="position: absolute; top: 0; left: 0; width: ${leftWidth}mm; height: 150mm; padding: 10mm 6mm; box-sizing: border-box; display: flex; flex-direction: column;">`;
+            
+            // 左側上半部 (條碼、品名、成分)
+            html += `<div>`; 
+            const minFontSize = 10;
+            // 放大左上方基礎字體 (從 16px 放大到 18px)
             const baseFontSize = 18;
-            const minFontSize = 12;
 
+            // 條碼動態字體
             let barcodeFontSize = baseFontSize;
-            if (data['A'] && data['A'].length > 20) {
-                barcodeFontSize = Math.max(minFontSize, baseFontSize - 2);
-            }
+            if (data['A'] && data['A'].length > 20) barcodeFontSize = Math.max(minFontSize, baseFontSize - 2);
 
+            // 品名動態字體
             let productNameFontSize = baseFontSize;
             if (data['B']) {
-                if (data['B'].length > 50) {
-                    productNameFontSize = Math.max(minFontSize, baseFontSize - 2);
-                } else if (data['B'].length > 80) {
-                    productNameFontSize = Math.max(minFontSize, baseFontSize - 4);
-                } else if (data['B'].length > 120) {
-                    productNameFontSize = Math.max(minFontSize, baseFontSize - 6);
+                if (data['B'].length > 50) productNameFontSize = Math.max(minFontSize, baseFontSize - 2);
+                else if (data['B'].length > 80) productNameFontSize = Math.max(minFontSize, baseFontSize - 4);
+                else if (data['B'].length > 120) productNameFontSize = Math.max(minFontSize, baseFontSize - 6);
+            }
+
+            if (data['A']) html += `<div style="font-size: ${barcodeFontSize}px; font-weight: bold; margin-bottom: 2mm;">${data['A']}</div>`;
+            if (data['B']) html += `<div style="font-size: ${productNameFontSize}px; font-weight: bold; margin-bottom: 4mm;">${data['B']}</div>`;
+            
+            // 放大成分字體 (從 13px 放大到 15px)
+            let ingredientFontSize = 15;
+            if (data['I'] && data['I'].length > 200) ingredientFontSize = 13;
+            if (data['I']) {
+                html += `<div style="font-size: ${ingredientFontSize}px; margin-bottom: 2mm;">`;
+                html += `<div style="font-weight: bold; margin-bottom: 1mm;">Ingredient:</div>`;
+                html += `<div style="word-wrap: break-word; line-height: 1.3;">${data['I']}</div>`;
+                html += `</div>`;
+            }
+            html += `</div>`; // 結束左側上半部
+            
+            // 這是一個彈性的空白區域，會自動把下面的元素推到最底端
+            html += `<div style="flex-grow: 1;"></div>`;
+            
+            // 左側下半部 (淨重、產地、儲存方式、製造商、日期)
+            // 放大左下角字體 (從 12px 放大到 14px)
+            const smallFontSize = 14;
+            html += `<div style="font-size: ${smallFontSize}px; line-height: 1.5;">`;
+            if (data['AU']) html += `<div>Net Content: ${data['AU']}</div>`;
+            if (data['X']) html += `<div>Country Of Origin: ${data['X']}</div>`;
+            
+            // 處理 Storage (AS) 中英文自動分行與加粗
+            if (data['AS']) {
+                let asText = data['AS'].toString().trim();
+                // 使用正則匹配：開頭的英數標點，直到遇到第一個中文字
+                const match = asText.match(/^([a-zA-Z0-9\s.,:;!&()'"/\-]+)([\u4e00-\u9fa5].*)$/);
+                if (match) {
+                    html += `<div>${match[1].trim()}</div><div style="font-weight: bold;">${match[2].trim()}</div>`;
+                } else if (asText.includes('\n')) {
+                    const parts = asText.split('\n');
+                    html += `<div>${parts[0]}</div><div style="font-weight: bold;">${parts.slice(1).join('<br>')}</div>`;
+                } else {
+                    html += `<div style="word-wrap: break-word;">${asText}</div>`;
                 }
             }
             
-            let ingredientFontSize = baseFontSize;
-            if (data['I']) {
-                const ingredientContainerWidth = (leftWidth - 12) * 3.7795275591;
-                const ingredientAvailableHeight = 40 * 3.7795275591;
-
-                const tempIngredientElement = document.createElement('div');
-                tempIngredientElement.style.position = 'absolute';
-                tempIngredientElement.style.visibility = 'hidden';
-                tempIngredientElement.style.width = ingredientContainerWidth + 'px';
-                tempIngredientElement.style.boxSizing = 'border-box';
-                tempIngredientElement.textContent = data['I'];
-                document.body.appendChild(tempIngredientElement);
-
-                do {
-                    tempIngredientElement.style.fontSize = ingredientFontSize + 'px';
-                    const ingredientHeight = tempIngredientElement.offsetHeight;
-                    if (ingredientHeight <= ingredientAvailableHeight) break;
-                    ingredientFontSize -= 1;
-                } while (ingredientFontSize >= minFontSize);
-
-                document.body.removeChild(tempIngredientElement);
-            }
+            if (data['T']) html += `<div style="word-wrap: break-word;">${data['T']}</div>`;
             
-            const smallFontSize = Math.max(minFontSize, baseFontSize - 4);
-            
-            if (data['A']) {
-                html += `<div style="font-size: ${barcodeFontSize}px; font-weight: bold; margin-bottom: 1mm;">${data['A']}</div>`;
-            }
-            if (data['B']) {
-                html += `<div style="font-size: ${productNameFontSize}px; font-weight: bold; margin-bottom: 4mm;">${data['B']}</div>`;
-            }
-            if (data['I']) {
-                html += `<div style="font-size: ${ingredientFontSize}px; margin-bottom: 3mm;">`;
-                html += `<div style="font-weight: bold; margin-bottom: 1mm;">Ingredient:</div>`;
-                html += `<div style="word-wrap: break-word;">${data['I']}</div>`;
-                html += `</div>`;
-            }
-            
-            let bottomContentHtml = '';
-            if (data['AU']) {
-                bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 1mm;">Net Content: ${data['AU']}</div>`;
-            }
-            if (data['X']) {
-                bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 1mm;">Country Of Origin: ${data['X']}</div>`;
-            }
-            if (data['AS']) {
-                bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 1mm; word-wrap: break-word;">${data['AS']}</div>`;
-            }
-            if (data['T']) {
-                bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 1mm; word-wrap: break-word;">${data['T']}</div>`;
-            }
-            bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 0.5mm;">Best before(End YY-MM):</div>`;
-            bottomContentHtml += `<div style="font-size: ${smallFontSize}px; margin-bottom: 0.5mm;">Show on package(見包裝)</div>`;
-            
-            const tempBottomElement = document.createElement('div');
-            tempBottomElement.style.position = 'absolute';
-            tempBottomElement.style.visibility = 'hidden';
-            tempBottomElement.style.width = (leftWidth - 12) * 3.7795275591 + 'px';
-            tempBottomElement.style.boxSizing = 'border-box';
-            tempBottomElement.innerHTML = bottomContentHtml;
-            document.body.appendChild(tempBottomElement);
-            const bottomContentHeight = tempBottomElement.offsetHeight;
-            document.body.removeChild(tempBottomElement);
-            
-            html += `<div style="height: ${bottomContentHeight}px;">${bottomContentHtml}</div>`;
-            html += `<div style="font-size: ${smallFontSize}px;">此日期前最佳(年月底)</div>`;
+            html += `<div style="margin-top: 3mm; font-weight: bold;">Best before(End YY-MM):</div>`;
+            html += `<div style="font-weight: bold;">此日期前最佳(年月底)</div>`;
+            html += `<div style="margin-top: 1mm; font-weight: bold;">Show on package(見包裝)</div>`;
             html += `</div>`;
             
-            html += `<div style="position: absolute; top: 10mm; left: ${leftWidth + 6}mm; width: ${rightWidth - 12}mm;">`;
-            const rightTopContent = `Nutrition Information\nServing Size:\n${data['AV'] || ''}\n${data['AH'] || ''}`;
-            const rightTopFontSize = calculateHealthFoodLabelFontSize(rightTopContent, (rightWidth - 12) * 3.7795275591, rightTopAvailableHeight * 3.7795275591, 18, 12);
-            const rightBottomContent = `Energy: ${data['AJ'] || ''}\nProtein: ${data['AK'] || ''}\nTotal Fat: ${data['AL'] || ''}\nSaturated: ${data['AM'] || ''}\nTrans Fat: ${data['AN'] || ''}\nCarbohydrate: ${data['AO'] || ''}\nSugars: ${data['AP'] || ''}\nSodium: ${data['AQ'] || ''}`;
-            const rightBottomFontSize = calculateHealthFoodLabelFontSize(rightBottomContent, (rightWidth - 12) * 3.7795275591, rightBottomAvailableHeight * 3.7795275591, 16, 12);
+            html += `</div>`; // 左側區塊結束
             
-            html += `<div style="font-size: ${rightTopFontSize}px; font-weight: bold; margin-bottom: 6mm;">Nutrition Information</div>`;
+            // ==== 右上方區塊 (Nutrition Information & Serving Size) ====
+            // 放大右上角字體 (從 14px 放大到 16px)
+            html += `<div style="position: absolute; top: 0; left: ${leftWidth}mm; width: ${rightWidth}mm; height: ${rightTopHeight}mm; padding: 10mm 6mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center;">`;
+            const rightTopFontSize = 16;
+            html += `<div style="font-size: 18px; font-weight: bold; margin-bottom: 2mm;">Nutrition Information</div>`;
             if (data['AV']) {
-                html += `<div style="font-size: ${rightTopFontSize}px; margin-bottom: 3mm;">Serving Size:</div>`;
-                html += `<div style="font-size: ${rightTopFontSize}px; margin-bottom: 6mm;">${data['AV']}</div>`;
+                html += `<div style="font-size: ${rightTopFontSize}px; margin-bottom: 1mm;">Serving Size:</div>`;
+                html += `<div style="font-size: ${rightTopFontSize}px; margin-bottom: 1mm;">${data['AV']}</div>`;
             }
-            if (data['AH']) {
-                html += `<div style="font-size: ${rightTopFontSize}px; margin-bottom: 4mm;">${data['AH']}</div>`;
-            }
-            if (data['AJ']) {
-                html += `<div style="font-size: ${rightBottomFontSize}px; margin-bottom: 2mm;">Energy: ${data['AJ']}</div>`;
-            }
-            if (data['AK']) {
-                html += `<div style="font-size: ${rightBottomFontSize}px; margin-bottom: 2mm;">Protein: ${data['AK']}</div>`;
-            }
-            if (data['AL']) {
-                html += `<div style="font-size: ${rightBottomFontSize}px; margin-bottom: 2mm;">Total Fat: ${data['AL']}</div>`;
-            }
-            if (data['AM']) {
-                html += `<div style="font-size: ${rightBottomFontSize}px; margin-bottom: 2mm;">Saturated: ${data['AM']}</div>`;
-            }
-            if (data['AN']) {
-                html += `<div style="font-size: ${rightBottomFontSize}px; margin-bottom: 2mm;">Trans Fat: ${data['AN']}</div>`;
-            }
-            if (data['AO']) {
-                html += `<div style="font-size: ${rightBottomFontSize}px; margin-bottom: 2mm;">Carbohydrate: ${data['AO']}</div>`;
-            }
-            if (data['AP']) {
-                html += `<div style="font-size: ${rightBottomFontSize}px; margin-bottom: 2mm;">Sugars: ${data['AP']}</div>`;
-            }
-            if (data['AQ']) {
-                html += `<div style="font-size: ${rightBottomFontSize}px;">Sodium: ${data['AQ']}</div>`;
-            }
-            
+            // 原本在這裡的 data['AH'] ("2 tablet") 已經被移除並移到底下區塊了
             html += `</div>`;
+            
+            // ==== 右下方區塊 (各項營養數據) ====
+            // 放大右下角字體 (從 14px 放大到 16px)
+            const rightBottomFontSize = 16;
+            // 讓這個區塊的 top 直接對齊分隔線 (rightTopHeight)
+            html += `<div style="position: absolute; top: ${rightTopHeight}mm; left: ${leftWidth}mm; width: ${rightWidth}mm; height: ${rightBottomHeight}mm; padding: 6mm 10mm; box-sizing: border-box; font-size: ${rightBottomFontSize}px; line-height: 1.8;">`;
+            
+            // 【修改重點】把「2 tablet」 (data['AH']) 放在右下角橫線的下方，且位於 Energy 的前面
+            if (data['AH']) html += `<div style="margin-bottom: 2mm;">${data['AH']}</div>`;
+
+            if (data['AJ']) html += `<div>Energy: ${data['AJ']}</div>`;
+            if (data['AK']) html += `<div>Protein: ${data['AK']}</div>`;
+            if (data['AL']) html += `<div>Total Fat: ${data['AL']}</div>`;
+            if (data['AM']) html += `<div>Saturated: ${data['AM']}</div>`;
+            if (data['AN']) html += `<div>Trans Fat: ${data['AN']}</div>`;
+            if (data['AO']) html += `<div>Carbohydrate: ${data['AO']}</div>`;
+            if (data['AP']) html += `<div>Sugars: ${data['AP']}</div>`;
+            if (data['AQ']) html += `<div>Sodium: ${data['AQ']}</div>`;
+            html += `</div>`;
+            
             return html;
         }
 
